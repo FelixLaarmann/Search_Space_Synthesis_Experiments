@@ -62,15 +62,15 @@ res_net_like = (target_res_net_like, max_parallel_res_net_like)
 
 target_u_net_like = Constructor("DAG",
                             Constructor("input", Literal(1))
-                            & Constructor("output", Literal(2))
+                            & Constructor("output", Literal(1))
                             & Constructor("structure", Literal(
-                                ((("Conv1D", 1, 2),), #(edge, ("Maxpool1D", 1, 1),),
-                                 #(edge, ("Conv1D", 1, 2),), (parallel_edges(2), ("Maxpool1D", 1, 1),),
-                                 #(parallel_edges(2), ("Conv1D", 1, 1),), (parallel_edges(2), ("Upsample", 1, 1),),
-                                 #(edge, ("Conv1D", 2, 1),), (edge, ("Upsample", 1, 1),),
-                                 #(("Conv1D", 2, 1),),
-                                 #(("Conv1D", 1, 1),),
-                                 #(("LinearLayer", 1, 1),),
+                                ((("Conv1D", 1, 2),), (edge, ("Maxpool1D", 1, 1),),
+                                 (edge, ("Conv1D", 1, 2),), (parallel_edges(2), ("Maxpool1D", 1, 1),),
+                                 (parallel_edges(2), ("Conv1D", 1, 1),), (parallel_edges(2), ("Upsample", 1, 1),),
+                                 (edge, ("Conv1D", 2, 1),), (edge, ("Upsample", 1, 1),),
+                                 (("Conv1D", 2, 1),),
+                                 (("Conv1D", 1, 1),),
+                                 (("LinearLayer", 1, 1),),
                                  )
                             )))
 
