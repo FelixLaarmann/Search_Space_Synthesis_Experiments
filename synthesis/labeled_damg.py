@@ -2,13 +2,7 @@ from cosy import SpecificationBuilder, Constructor, Literal, Var, Synthesizer
 from cosy.tree import Tree
 from cosy.types import DataGroup, Group
 
-from typing import Any
-
-import networkx as nx
-import matplotlib.pyplot as plt
-
-from itertools import accumulate
-
+# TODO: write normalization function for structure literals for an increased usability of the request language
 
 class Labeled_DAMG_Repository:
     """
