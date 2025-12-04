@@ -14,9 +14,9 @@ The most important part is to understand the request language.
 If possible, we will use little ASCII-arts to illustrate the concepts.
 A graph-art like
 
-  /  B  \\
+  /  B  \
 A          D - E
-  \\  C  /
+  \  C  /
 
 has to be read from left to right, since edges are directed.
 Therefore the above ASCII-graph may be represented as  the following edge list:
@@ -25,10 +25,12 @@ Therefore the above ASCII-graph may be represented as  the following edge list:
 So how do we represent such graphs in our request language?
 First, we have to distinguish between two arts of composition:
 Parallel composition and sequential composition.
-Parallel composition means, that nodes B and C are in parallel. We may also write B || C for the parallel composition of nodes B and C.
-Sequential composition are essentially the edges. We may also write A ; B for the sequential composition of nodes A and B.
-
+Parallel composition means, that nodes B and C are in beside to each other, but there is no edge between them. 
+We may also write B || C for the parallel composition of nodes B and C.
+Sequential composition are essentially the edges. 
+We may also write A ; B for the sequential composition of nodes A and B.
 """
+# TODO: finish explanation/tutorial
 
 target_linear_fully_connected = Constructor("DAG",
                             Constructor("input", Literal(1))
@@ -78,7 +80,7 @@ max_parallel_u_net_like = 3
 
 u_net_like = (target_u_net_like, max_parallel_u_net_like)
 
-components = ["Conv1D", "LinearLayer", "Maxpool1D", "Upsample"]  # ["Conv1D", "LinearLayer", "Maxpool1D", "Dropout", "ReLU", "Sigmoid", "BatchNorm1D", "Upsample"]
+components = ["Conv1D", "LinearLayer", "Maxpool1D", "Dropout", "ReLU", "Sigmoid", "BatchNorm1D", "Upsample"]
 
 
 #target, max_parallel = linear_fully_connected
