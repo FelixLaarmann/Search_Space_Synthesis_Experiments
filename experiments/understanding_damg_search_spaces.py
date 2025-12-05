@@ -67,6 +67,20 @@ target_u_net_like = Constructor("DAG",
                             & Constructor("output", Literal(1))
                             & Constructor("structure", Literal(
                                 ((("Conv1D", 1, 2),), (edge, ("Maxpool1D", 1, 1),),
+                                 (edge, ("Conv1D", 1, 2),), (edge, edge, ("Maxpool1D", 1, 1),),
+                                 (edge, edge, ("Conv1D", 1, 1),), (edge, edge, ("Upsample", 1, 1),),
+                                 (edge, ("Conv1D", 2, 1),), (edge, ("Upsample", 1, 1),),
+                                 (("Conv1D", 2, 1),),
+                                 (("Conv1D", 1, 1),),
+                                 (("LinearLayer", 1, 1),),
+                                 )
+                            )))
+
+target_u_net_like_nf = Constructor("DAG",
+                            Constructor("input", Literal(1))
+                            & Constructor("output", Literal(1))
+                            & Constructor("structure", Literal(
+                                ((("Conv1D", 1, 2),), (edge, ("Maxpool1D", 1, 1),),
                                  (edge, ("Conv1D", 1, 2),), (parallel_edges(2), ("Maxpool1D", 1, 1),),
                                  (parallel_edges(2), ("Conv1D", 1, 1),), (parallel_edges(2), ("Upsample", 1, 1),),
                                  (edge, ("Conv1D", 2, 1),), (edge, ("Upsample", 1, 1),),
@@ -90,7 +104,7 @@ target, max_parallel = u_net_like
 
 number_of_terms = 3
 
-interpretation = "plotted_graph" # "term"
+interpretation = "term" # "plotted_graph" # "term"
 
 if __name__ == "__main__":
     repo = Labeled_DAMG_Repository(labels=components, dimensions=range(0, max_parallel + 1))
