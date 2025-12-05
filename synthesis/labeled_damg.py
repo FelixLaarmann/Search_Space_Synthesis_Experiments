@@ -1144,19 +1144,26 @@ class Labeled_DAMG_Repository:
 
     def edgelist_algebra(self):
         return {
-            "edges": (lambda io, para: lambda id, inputs: ([], inputs)),
+            "edges": (lambda io, para: lambda id, inputs: ([], inputs, {})),
 
-            "swap": (lambda io, n, m, para: lambda id, inputs: ([], inputs[n:] + inputs[:n])),
+            "swap": (lambda io, n, m, para: lambda id, inputs: ([], inputs[n:] + inputs[:n], {})),
 
-            "node": (lambda l, i, o, para: lambda id, inputs: ([(x,l + str(id)) for x in inputs],  [l + str(id) for _ in range(0,o)])),
+            "node": (lambda l, i, o, para: lambda id, inputs: ([(x,l + str(id)) for x in inputs],  [l + str(id) for _ in range(0,o)], {l + str(id) : id})),
 
             "beside_singleton": (lambda i, o, ls, para, x: x),
 
-            "beside_cons": (lambda i, i1, i2, o, o1, o2, ls, head, tail, x, y: lambda id, inputs: (x(id, inputs[:i1])[0] + y((id[0], id[1] + 1), inputs[i1:])[0], x(id, inputs[:i1])[1] + y((id[0], id[1] + 1), inputs[i1:])[1])),
+            "beside_cons": (lambda i, i1, i2, o, o1, o2, ls, head, tail, x, y: lambda id, inputs:
+                (x(id, inputs[:i1])[0] + y((id[0], id[1] + 0.2), inputs[i1:])[0],
+                 x(id, inputs[:i1])[1] + y((id[0], id[1] + 0.2), inputs[i1:])[1],
+                 x(id, inputs[:i1])[2] | y((id[0], id[1] + 0.2), inputs[i1:])[2])),
 
             "before_singleton": (lambda i, o, r, ls, ls1, x: (x, i)),
 
-            "before_cons": (lambda i, j, o, r, ls, head, tail, x, y: (lambda id, inputs: (y[0]((id[0] + 1, id[1]), x(id, inputs)[1])[0] + x(id, inputs)[0], y[0]((id[0] + 1, id[1]), x(id, inputs)[1])[1]), i)),
+            "before_cons": (lambda i, j, o, r, ls, head, tail, x, y: (lambda id, inputs:
+                                                                      (y[0]((id[0] + 2.5, id[1]), x(id, inputs)[1])[0] + x(id, inputs)[0],
+                                                                       y[0]((id[0] + 2.5, id[1]), x(id, inputs)[1])[1],
+                                                                       y[0]((id[0] + 2.5, id[1]), x(id, inputs)[1])[2] | x(id, inputs)[2]),
+                                                                      i)),
         }
 
 if __name__ == "__main__":

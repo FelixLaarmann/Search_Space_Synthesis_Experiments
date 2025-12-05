@@ -98,8 +98,8 @@ components = ["Conv1D", "LinearLayer", "Maxpool1D", "Dropout", "ReLU", "Sigmoid"
 
 
 #target, max_parallel = linear_fully_connected
-#target, max_parallel = res_net_like
-target, max_parallel = u_net_like
+target, max_parallel = res_net_like
+#target, max_parallel = u_net_like
 
 
 number_of_terms = 3
@@ -122,21 +122,23 @@ if __name__ == "__main__":
             print(t.interpret(repo.pretty_term_algebra()))
         elif interpretation == "plotted_graph":
             f, inputs = t.interpret(repo.edgelist_algebra())
-            edgelist, to_outputs = f((0, 0), ["input" for _ in range(0, inputs)])
+            edgelist, to_outputs, pos_A = f((-3.8, -3.8), ["input" for _ in range(0, inputs)])
             edgelist = edgelist + [(o, "output") for o in to_outputs]
+
+            pos_A = pos_A | {"input": (-5.5, -3.8), "output": (max([x for x, y in pos_A.values()]) + 2.5, -3.8)}
 
             G = nx.MultiDiGraph()
             G.add_edges_from(edgelist)
 
             connectionstyle = [f"arc3,rad={r}" for r in accumulate([0.3] * 4)]
 
-            plt.figure(figsize=(10, 10))
+            plt.figure(figsize=(25, 25))
 
             pos_G = nx.bfs_layout(G, "input")
             node_size = 3000
-            nx.draw_networkx_nodes(G, pos_G, node_size=node_size, node_color='lightblue', alpha=0.5, margins=0.05)
-            nx.draw_networkx_labels(G, pos_G, font_size=6, font_weight="bold")
-            nx.draw_networkx_edges(G, pos_G, edge_color="black", connectionstyle=connectionstyle, node_size=node_size,
+            nx.draw_networkx_nodes(G, pos_A, node_size=node_size, node_color='lightblue', alpha=0.5, margins=0.05)
+            nx.draw_networkx_labels(G, pos_A, font_size=6, font_weight="bold")
+            nx.draw_networkx_edges(G, pos_A, edge_color="black", connectionstyle=connectionstyle, node_size=node_size,
                                    width=2)
             plt.figtext(0.01, 0.02, t.interpret(repo.pretty_term_algebra()), fontsize=14)
 
