@@ -141,18 +141,19 @@ class Labeled_DAMG_Repository:
             if value is None:
                 return True # because synthesis enforces, that every variance for None will be in normal form
             for l, r in zip(value[:-1], value[1:]):
-                if len(l) == 3 and l[0] is not None:
-                    label, i, o = l
-                    if isinstance(label, tuple) and len(label) == 3 and label[0] == "swap" and label[1] == 0:
-                        if len(r) == 3 and r[0] is not None:
-                            right_label, right_i, right_o = r
-                            if isinstance(right_label, tuple) and len(right_label) == 3 and right_label[0] == "swap" and right_label[1] == 0:
-                                """
-                                beside(swap(n, 0, n), swap(m, 0, m))
-                                ->
-                                swap(n+m, 0, n+m)
-                                """
-                                return False
+                if l is not None and r is not None:
+                    if len(l) == 3 and l[0] is not None:
+                        label, i, o = l
+                        if isinstance(label, tuple) and len(label) == 3 and label[0] == "swap" and label[1] == 0:
+                            if len(r) == 3 and r[0] is not None:
+                                right_label, right_i, right_o = r
+                                if isinstance(right_label, tuple) and len(right_label) == 3 and right_label[0] == "swap" and right_label[1] == 0:
+                                    """
+                                    beside(swap(n, 0, n), swap(m, 0, m))
+                                    ->
+                                    swap(n+m, 0, n+m)
+                                    """
+                                    return False
             return True
 
         def normalize(self, value):
@@ -208,111 +209,113 @@ class Labeled_DAMG_Repository:
             if value is None:
                 return True # because synthesis enforces, that every variance for None will be in normal form
             for l, r in zip(value[:-1], value[1:]):
-                if not (self.para_tuples.normalform(l) and self.para_tuples.normalform(r)):
-                    return False
-                if len(l) == 1 and l[0] is not None:
-                    label, i, o = l[0]
-                    if isinstance(label, tuple) and len(label) == 3 and label[0] == "swap":
-                        m = label[1]
-                        n = label[2]
-                        if m == 0:
-                            """
-                            before(edge(), x)
-                            ->
-                            x
-                            """
-                            return False
-                        if len(r) == 1 and r[0] is not None:
-                            """
-                            before(swap(m+n, m, n), swap(n+m, n, m))
-                            ->
-                            copy(m+n, edge())
-                            """
-                            right_label, right_i, right_o = r[0]
-                            if isinstance(right_label, tuple) and len(right_label) == 3 and right_label[0] == "swap":
-                                right_m = right_label[1]
-                                right_n = right_label[2]
-                                if right_m is not None and right_n is not None:
-                                    if m == right_n and n == right_m:
-                                        return False
-                if len(r) == 1 and r[0] is not None:
-                    """
-                    before(x, edge())
-                    ->
-                    x
-                    """
-                    label, i, o = r[0]
-                    if isinstance(label, tuple) and len(label) == 3 and label[0] == "swap":
-                        if label[1] == 0:
-                            return False
-                if len(l) == 2 and len(r) == 2:
-                    left_first, left_second = l
-                    right_first, right_second = r
-                    if left_first is not None and left_second is not None and right_first is not None and right_second is not None:
-                        label_l_1, i_l_1, o_l_1 = left_first
-                        label_l_2, i_l_2, o_l_2 = left_second
-                        label_r_1, i_r_1, o_r_1 = right_first
-                        label_r_2, i_r_2, o_r_2 = right_second
-                        if isinstance(label_l_1, tuple) and len(label_l_1) == 3 and label_l_1[0] == "swap":
-                            m = label_l_1[1]
-                            n = label_l_1[2]
-                            if isinstance(label_l_2, tuple) and len(label_l_2) == 3 and label_l_2[0] == "swap" and label_l_2[1] == 0:
-                                p = label_l_2[2]
-                                if isinstance(label_r_1, tuple) and len(label_r_1) == 3 and label_r_1[0] == "swap" and label_r_1[1] == 0:
-                                    right_n = label_r_1[2]
-                                    if isinstance(label_r_2, tuple) and len(label_r_2) == 3 and label_r_2[0] == "swap":
-                                        right_m = label_r_2[1]
-                                        right_p = label_r_2[2]
-                                        if m is not None and n is not None and p is not None and right_m is not None and right_n is not None and right_p is not None:
-                                            if m == right_m and n == right_n and p == right_p:
-                                                """
-                                                before(besides(swap(m+n, m, n), copy(p,edge())), besides(copy(n, edge()), swap(m+p, m, p)))
-                                                ->
-                                                swap(m + n + p, m, n+p)
-                                                """
-                                                return False
-                        if isinstance(label_l_1, tuple) and len(label_l_1) == 3 and label_l_1[0] == "swap" and label_l_1[1] == 0:
-                            m = label_l_1[2]
-                            if isinstance(label_l_2, tuple) and len(label_l_2) == 3 and label_l_2[0] == "swap":
-                                n = label_l_2[1]
-                                p = label_l_2[2]
-                                if isinstance(label_r_1, tuple) and len(label_r_1) == 3 and label_r_1[0] == "swap":
-                                    right_m = label_r_1[1]
-                                    right_p = label_r_1[2]
-                                    if isinstance(label_r_2, tuple) and len(label_r_2) == 3 and label_r_2[0] == "swap" and label_r_2[1] == 0:
-                                        right_n = label_r_2[2]
-                                        if m is not None and n is not None and p is not None and right_m is not None and right_n is not None and right_p is not None:
-                                            if m == right_m and n == right_n and p == right_p:
-                                                """
-                                                before(besides(copy(m, edge()), swap(n+p, n, p)), besides(swap(m+p, m, p), copy(n,edge())))
-                                                ->
-                                                swap(m + n + p, m+n, p)
-                                                """
-                                                return False
+                if l is not None and r is not None:
+                    if not (self.para_tuples.normalform(l) and self.para_tuples.normalform(r)):
+                        return False
+                    if len(l) == 1 and l[0] is not None:
+                        label, i, o = l[0]
+                        if isinstance(label, tuple) and len(label) == 3 and label[0] == "swap":
+                            m = label[1]
+                            n = label[2]
+                            if m == 0:
+                                """
+                                before(edge(), x)
+                                ->
+                                x
+                                """
+                                return False
+                            if len(r) == 1 and r[0] is not None:
+                                """
+                                before(swap(m+n, m, n), swap(n+m, n, m))
+                                ->
+                                copy(m+n, edge())
+                                """
+                                right_label, right_i, right_o = r[0]
+                                if isinstance(right_label, tuple) and len(right_label) == 3 and right_label[0] == "swap":
+                                    right_m = right_label[1]
+                                    right_n = right_label[2]
+                                    if right_m is not None and right_n is not None:
+                                        if m == right_n and n == right_m:
+                                            return False
+                    if len(r) == 1 and r[0] is not None:
+                        """
+                        before(x, edge())
+                        ->
+                        x
+                        """
+                        label, i, o = r[0]
+                        if isinstance(label, tuple) and len(label) == 3 and label[0] == "swap":
+                            if label[1] == 0:
+                                return False
+                    if len(l) == 2 and len(r) == 2:
+                        left_first, left_second = l
+                        right_first, right_second = r
+                        if left_first is not None and left_second is not None and right_first is not None and right_second is not None:
+                            label_l_1, i_l_1, o_l_1 = left_first
+                            label_l_2, i_l_2, o_l_2 = left_second
+                            label_r_1, i_r_1, o_r_1 = right_first
+                            label_r_2, i_r_2, o_r_2 = right_second
+                            if isinstance(label_l_1, tuple) and len(label_l_1) == 3 and label_l_1[0] == "swap":
+                                m = label_l_1[1]
+                                n = label_l_1[2]
+                                if isinstance(label_l_2, tuple) and len(label_l_2) == 3 and label_l_2[0] == "swap" and label_l_2[1] == 0:
+                                    p = label_l_2[2]
+                                    if isinstance(label_r_1, tuple) and len(label_r_1) == 3 and label_r_1[0] == "swap" and label_r_1[1] == 0:
+                                        right_n = label_r_1[2]
+                                        if isinstance(label_r_2, tuple) and len(label_r_2) == 3 and label_r_2[0] == "swap":
+                                            right_m = label_r_2[1]
+                                            right_p = label_r_2[2]
+                                            if m is not None and n is not None and p is not None and right_m is not None and right_n is not None and right_p is not None:
+                                                if m == right_m and n == right_n and p == right_p:
+                                                    """
+                                                    before(besides(swap(m+n, m, n), copy(p,edge())), besides(copy(n, edge()), swap(m+p, m, p)))
+                                                    ->
+                                                    swap(m + n + p, m, n+p)
+                                                    """
+                                                    return False
+                            if isinstance(label_l_1, tuple) and len(label_l_1) == 3 and label_l_1[0] == "swap" and label_l_1[1] == 0:
+                                m = label_l_1[2]
+                                if isinstance(label_l_2, tuple) and len(label_l_2) == 3 and label_l_2[0] == "swap":
+                                    n = label_l_2[1]
+                                    p = label_l_2[2]
+                                    if isinstance(label_r_1, tuple) and len(label_r_1) == 3 and label_r_1[0] == "swap":
+                                        right_m = label_r_1[1]
+                                        right_p = label_r_1[2]
+                                        if isinstance(label_r_2, tuple) and len(label_r_2) == 3 and label_r_2[0] == "swap" and label_r_2[1] == 0:
+                                            right_n = label_r_2[2]
+                                            if m is not None and n is not None and p is not None and right_m is not None and right_n is not None and right_p is not None:
+                                                if m == right_m and n == right_n and p == right_p:
+                                                    """
+                                                    before(besides(copy(m, edge()), swap(n+p, n, p)), besides(swap(m+p, m, p), copy(n,edge())))
+                                                    ->
+                                                    swap(m + n + p, m+n, p)
+                                                    """
+                                                    return False
 
             for l, m, r in zip(value[:-2], value[1:-1], value[2:]):
-                if len(l) == 1 and l[0] is not None:
-                    left_label, left_i, left_o = l[0]
-                    if isinstance(left_label, tuple) and len(left_label) == 3 and left_label[0] == "swap":
-                        left_m = left_label[1]
-                        left_n = left_label[2]
-                        if len(m) == 2 and len(r) == 1 and r[0] is not None:
-                            mid_first, mid_second = m
-                            right_label, right_i, right_o = r[0]
-                            if mid_first is not None and mid_second is not None:
-                                mid_first_label, mid_n, mid_p = mid_first
-                                mid_second_label, mid_m, mid_q = mid_second
-                                if isinstance(right_label, tuple) and len(right_label) == 3 and right_label[0] == "swap":
-                                    right_p = right_label[1]
-                                    right_q = right_label[2]
-                                    if left_m is not None and left_n is not None and mid_m is not None and mid_n is not None and mid_p is not None and mid_q is not None and right_p is not None and right_q is not None:
-                                        if left_m == mid_m and left_n == mid_n and right_p == mid_p and right_q == mid_q:
-                                            """
-                                            before(swap(m + n, m, n), before(beside(x(n, p), y(m, q)), swap(p + q, p, q)))
-                                            ->
-                                            beside(y(m, q), x(n, p))
-                                            """
-                                            return False
+                if l is not None and m is not None and r is not None:
+                    if len(l) == 1 and l[0] is not None:
+                        left_label, left_i, left_o = l[0]
+                        if isinstance(left_label, tuple) and len(left_label) == 3 and left_label[0] == "swap":
+                            left_m = left_label[1]
+                            left_n = left_label[2]
+                            if len(m) == 2 and len(r) == 1 and r[0] is not None:
+                                mid_first, mid_second = m
+                                right_label, right_i, right_o = r[0]
+                                if mid_first is not None and mid_second is not None:
+                                    mid_first_label, mid_n, mid_p = mid_first
+                                    mid_second_label, mid_m, mid_q = mid_second
+                                    if isinstance(right_label, tuple) and len(right_label) == 3 and right_label[0] == "swap":
+                                        right_p = right_label[1]
+                                        right_q = right_label[2]
+                                        if left_m is not None and left_n is not None and mid_m is not None and mid_n is not None and mid_p is not None and mid_q is not None and right_p is not None and right_q is not None:
+                                            if left_m == mid_m and left_n == mid_n and right_p == mid_p and right_q == mid_q:
+                                                """
+                                                before(swap(m + n, m, n), before(beside(x(n, p), y(m, q)), swap(p + q, p, q)))
+                                                ->
+                                                beside(y(m, q), x(n, p))
+                                                """
+                                                return False
             return True
 
         def normalize(self, value):
@@ -1139,7 +1142,7 @@ class Labeled_DAMG_Repository:
         return id
 
 
-    def path_algebra(self):
+    def edgelist_algebra(self):
         return {
             "edges": (lambda io, para: lambda id, inputs: ([], inputs)),
 
@@ -1151,9 +1154,9 @@ class Labeled_DAMG_Repository:
 
             "beside_cons": (lambda i, i1, i2, o, o1, o2, ls, head, tail, x, y: lambda id, inputs: (x(id, inputs[:i1])[0] + y((id[0], id[1] + 1), inputs[i1:])[0], x(id, inputs[:i1])[1] + y((id[0], id[1] + 1), inputs[i1:])[1])),
 
-            "before_singleton": (lambda i, o, r, ls, ls1, x: x),
+            "before_singleton": (lambda i, o, r, ls, ls1, x: (x, i)),
 
-            "before_cons": (lambda i, j, o, r, ls, head, tail, x, y: lambda id, inputs: (y((id[0] + 1, id[1]), x(id, inputs)[1])[0] + x(id, inputs)[0], y((id[0] + 1, id[1]), x(id, inputs)[1])[1])),
+            "before_cons": (lambda i, j, o, r, ls, head, tail, x, y: (lambda id, inputs: (y[0]((id[0] + 1, id[1]), x(id, inputs)[1])[0] + x(id, inputs)[0], y[0]((id[0] + 1, id[1]), x(id, inputs)[1])[1]), i)),
         }
 
 if __name__ == "__main__":

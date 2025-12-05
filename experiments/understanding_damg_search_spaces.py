@@ -104,7 +104,7 @@ target, max_parallel = u_net_like
 
 number_of_terms = 3
 
-interpretation = "term" # "plotted_graph" # "term"
+interpretation = "plotted_graph" # "term"
 
 if __name__ == "__main__":
     repo = Labeled_DAMG_Repository(labels=components, dimensions=range(0, max_parallel + 1))
@@ -121,8 +121,8 @@ if __name__ == "__main__":
         if interpretation == "term":
             print(t.interpret(repo.pretty_term_algebra()))
         elif interpretation == "plotted_graph":
-            f = t.interpret(repo.path_algebra())
-            edgelist, to_outputs = f((0, 0), ["input"])
+            f, inputs = t.interpret(repo.edgelist_algebra())
+            edgelist, to_outputs = f((0, 0), ["input" for _ in range(0, inputs)])
             edgelist = edgelist + [(o, "output") for o in to_outputs]
 
             G = nx.MultiDiGraph()
