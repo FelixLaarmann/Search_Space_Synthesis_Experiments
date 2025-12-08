@@ -14,9 +14,11 @@ The most important part is to understand the request language.
 If possible, we will use little ASCII-arts to illustrate the concepts.
 A graph-art like
 
-  /  B  \
+     B
+  /     \
 A          D - E
-  \  C  /
+  \     /
+     C
 
 has to be read from left to right, since edges are directed.
 Therefore the above ASCII-graph may be represented as  the following edge list:
@@ -32,16 +34,16 @@ We may also write A ; B for the sequential composition of nodes A and B.
 """
 # TODO: finish explanation/tutorial
 
-target_linear_fully_connected = Constructor("DAG",
+target_linear = Constructor("DAG",
                             Constructor("input", Literal(1))
                             & Constructor("output", Literal(1))
                             & Constructor("structure", Literal(
                                 ((None,), (None,), (None,), (None,))
                             )))
 
-max_parallel_linear_fully_connected = 1
+max_parallel_linear = 1
 
-linear_fully_connected = (target_linear_fully_connected, max_parallel_linear_fully_connected)
+linear = (target_linear, max_parallel_linear)
 
 edge = (("swap", 0, 1), 1, 1)
 
@@ -97,9 +99,9 @@ u_net_like = (target_u_net_like, max_parallel_u_net_like)
 components = ["Conv1D", "LinearLayer", "Maxpool1D", "Dropout", "ReLU", "Sigmoid", "BatchNorm1D", "Upsample"]
 
 
-#target, max_parallel = linear_fully_connected
-target, max_parallel = res_net_like
-#target, max_parallel = u_net_like
+#target, max_parallel = linear
+#target, max_parallel = res_net_like
+target, max_parallel = u_net_like
 
 
 number_of_terms = 3
