@@ -100,13 +100,13 @@ components = ["Conv1D", "LinearLayer", "Maxpool1D", "Dropout", "ReLU", "Sigmoid"
 
 
 #target, max_parallel = linear
-#target, max_parallel = res_net_like
-target, max_parallel = u_net_like
+target, max_parallel = res_net_like
+#target, max_parallel = u_net_like
 
 
-number_of_terms = 3
+number_of_terms = 10
 
-interpretation = "plotted_graph" # "term"
+interpretation = "term" # "plotted_graph" # "term"
 
 if __name__ == "__main__":
     repo = Labeled_DAMG_Repository(labels=components, dimensions=range(0, max_parallel + 1))
@@ -115,7 +115,7 @@ if __name__ == "__main__":
 
     synthesizer = Synthesizer(repo.specification(), {})
 
-    search_space = synthesizer.construct_solution_space(target)
+    search_space = synthesizer.construct_solution_space(target).prune()
     print("finish synthesis, start enumerate")
     terms = search_space.enumerate_trees(target, number_of_terms)
 
