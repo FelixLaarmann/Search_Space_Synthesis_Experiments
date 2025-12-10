@@ -1051,7 +1051,7 @@ class ODE_DAG_Repository:
                                 & Constructor("structure", Literal(None))
                                 ) & Constructor("non_ID")
                     ),
-
+            """
             "sigmoid": SpecificationBuilder()
             .parameter("i", dimension)
             .parameter("o", dimension)
@@ -1083,7 +1083,7 @@ class ODE_DAG_Repository:
                                 & Constructor("structure", Literal(None))
                                 ) & Constructor("non_ID")
                     ),
-
+            """
             "relu": SpecificationBuilder()
             .parameter("inplace", bool)
             .parameter("i", dimension)
@@ -1101,7 +1101,7 @@ class ODE_DAG_Repository:
                                 & Constructor("structure", Literal(None))
                                 ) & Constructor("non_ID")
                     ),
-
+            """
             "lte": SpecificationBuilder()
             .parameter("threshold", threshold_values)
             .parameter("i", dimension)
@@ -1134,7 +1134,7 @@ class ODE_DAG_Repository:
                                 & Constructor("structure", Literal(None))
                                 ) & Constructor("non_ID")
                     ),
-
+            """
             #'''
             "beside_singleton": SpecificationBuilder()
             .parameter("i", dimension)
@@ -1540,6 +1540,7 @@ if __name__ == "__main__":
     print(target)
 
     solution_space = synthesizer.construct_solution_space(target).prune()
+    print("finish synthesis, start enumerate")
     terms = solution_space.enumerate_trees(target, 10)
 
     for t in terms:
