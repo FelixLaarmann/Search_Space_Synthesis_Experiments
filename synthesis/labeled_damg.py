@@ -101,11 +101,17 @@ class Labeled_DAMG_Repository:
 
 
         def __contains__(self, value):
-            return value is None or ((isinstance(value, tuple) and len(value) == 3 and (value[0] in self.labels or
-                                                                      (value[0][0] == "swap" and
-                                                                       (value[0][1] in self.dimensions or value[0][1] == 0) and
-                                                                       value[0][2] in self.dimensions))
-                    and value[1] in self.dimensions and value[2] in self.dimensions))
+            return value is None or (isinstance(value, tuple)
+                                     and len(value) == 3
+                                     and (value[0] in self.labels
+                                          or (value[0][0] == "swap"
+                                              and (value[0][1] in self.dimensions
+                                                   or value[0][1] == 0)
+                                              and value[0][2] in self.dimensions))
+                                     and value[1] in self.dimensions
+                                     and value[2] in self.dimensions
+                                     # TODO: something like this? -> and value[1] == value[2] if not value[0] in self.labels and value[0][0] == "swap" else True
+                                     )
 
     class ParaTuples(Group):
         name = "ParaTuples"
