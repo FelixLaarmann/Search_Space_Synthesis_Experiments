@@ -99,14 +99,14 @@ u_net_like = (target_u_net_like, max_parallel_u_net_like)
 components = ["Conv1D", "LinearLayer", "Maxpool1D", "Dropout", "ReLU", "Sigmoid", "BatchNorm1D", "Upsample"]
 
 
-#target, max_parallel = linear
-target, max_parallel = res_net_like
+target, max_parallel = linear
+#target, max_parallel = res_net_like
 #target, max_parallel = u_net_like
 
 
 number_of_terms = 10
 
-interpretation = "term" # "plotted_graph" # "term"
+interpretation = "plotted_graph" # "term"
 
 if __name__ == "__main__":
     repo = Labeled_DAMG_Repository(labels=components, dimensions=range(0, max_parallel + 1))
@@ -124,10 +124,12 @@ if __name__ == "__main__":
             print(t.interpret(repo.pretty_term_algebra()))
         elif interpretation == "plotted_graph":
             f, inputs = t.interpret(repo.edgelist_algebra())
-            edgelist, to_outputs, pos_A = f((-3.8, -3.8), ["input" for _ in range(0, inputs)])
+            edgelist, to_outputs, (pos_A, relabel) = f((-3.8, -3.8), ["input" for _ in range(0, inputs)])
             edgelist = edgelist + [(o, "output") for o in to_outputs]
 
             pos_A = pos_A | {"input": (-5.5, -3.8), "output": (max([x for x, y in pos_A.values()]) + 2.5, -3.8)}
+
+            relabel = relabel | {"input": "input", "output": "output"}
 
             G = nx.MultiDiGraph()
             G.add_edges_from(edgelist)
@@ -139,7 +141,7 @@ if __name__ == "__main__":
             pos_G = nx.bfs_layout(G, "input")
             node_size = 3000
             nx.draw_networkx_nodes(G, pos_A, node_size=node_size, node_color='lightblue', alpha=0.5, margins=0.05)
-            nx.draw_networkx_labels(G, pos_A, font_size=6, font_weight="bold")
+            nx.draw_networkx_labels(G, pos_A, labels = relabel, font_size=6, font_weight="bold")
             nx.draw_networkx_edges(G, pos_A, edge_color="black", connectionstyle=connectionstyle, node_size=node_size,
                                    width=2)
             plt.figtext(0.01, 0.02, t.interpret(repo.pretty_term_algebra()), fontsize=14)
