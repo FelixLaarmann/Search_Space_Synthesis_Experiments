@@ -1051,7 +1051,7 @@ class ODE_DAG_Repository:
                                 & Constructor("structure", Literal(None))
                                 ) & Constructor("non_ID")
                     ),
-            """
+
             "sigmoid": SpecificationBuilder()
             .parameter("i", dimension)
             .parameter("o", dimension)
@@ -1083,7 +1083,7 @@ class ODE_DAG_Repository:
                                 & Constructor("structure", Literal(None))
                                 ) & Constructor("non_ID")
                     ),
-            """
+
             "relu": SpecificationBuilder()
             .parameter("inplace", bool)
             .parameter("i", dimension)
@@ -1101,7 +1101,7 @@ class ODE_DAG_Repository:
                                 & Constructor("structure", Literal(None))
                                 ) & Constructor("non_ID")
                     ),
-            """
+
             "lte": SpecificationBuilder()
             .parameter("threshold", threshold_values)
             .parameter("i", dimension)
@@ -1134,7 +1134,7 @@ class ODE_DAG_Repository:
                                 & Constructor("structure", Literal(None))
                                 ) & Constructor("non_ID")
                     ),
-            """
+
             #'''
             "beside_singleton": SpecificationBuilder()
             .parameter("i", dimension)
@@ -1458,12 +1458,8 @@ Learner(
 """),
         }
 
-    def unique_id(self):
-        id = self.id_seed
-        self.id_seed += 1
-        return id
-
-
+    # algebra for DAG-criteria and plotting
+    # TODO: update to relabeling nodes with their combinator names
     def edgelist_algebra(self):
         return {
             "edges": (lambda io, para: lambda id, inputs: ([], inputs, {})),
@@ -1505,24 +1501,67 @@ Learner(
             "learner": (lambda i, o, r, e, lr, l, opt, loss, optimizer, model: model)
         }
 
+
+    def pytorch_code_algebra(self):
+        return {
+            "edges": (lambda io, para: lambda id: (f"""""", f"""""")),
+
+            "swap": (lambda io, n, m, para: lambda id: (f"""""", f"""""")),
+
+            "linear": (lambda in_f, out_f, bias, i, o, para: lambda id: (f"""
+            self.linear_{id} = nn.Linear({in_f}, {out_f}, bias={bias})
+""", lambda x: f"self.linear_{id}({x})")),
+
+            "sigmoid": (lambda i, o, para: lambda id: (f"", lambda x: f"torch.sigmoid({x})")),
+
+            "sharpness_sigmoid": (lambda s, i, o, para: lambda id: (f"""
+            self.sharpness_{id} = {s}
+""", lambda x: f"torch.sigmoid(-self.sharpness_{id} * {x})")),
+
+            "relu": (lambda inplace, i, o, para: lambda id: (f"""
+            self.relu_{id} = nn.ReLU(inplace={inplace})
+""", lambda x: f"self.relu_{id}({x})")),
+
+            "lte": (lambda t, i, o, para: lambda id: (f"", lambda x: f"({x} <= 0).float()")),
+
+            "join": (lambda i, o, para: lambda id: (f"", f"""""")),
+
+            "beside_singleton": (lambda i, o, ls, para, x: lambda id: (f"""""", f"""""")),
+
+            "beside_cons": (lambda i, i1, i2, o, o1, o2, ls, head, tail, x, y: lambda id: (f"""""", f"""""")),
+
+            "before_singleton": (lambda i, o, r, ls, ls1, x: lambda id: (f"""""", f"""""")),
+
+            "before_cons": (lambda i, j, o, r, ls, head, tail, x, y: lambda id: (f"""""", f"""""")),
+
+            "mse_loss": (lambda l: lambda id: (f"""""", f"""""")),
+
+            "adam_optimizer": (lambda lr, o: lambda id: (f"""""", f"""""")),
+
+            "learner": (lambda i, o, r, e, lr, l, opt, loss, optimizer, model: lambda id: (f"""""", f"""""")),
+            }
+
+
+
+
 if __name__ == "__main__":
     repo = ODE_DAG_Repository(dimensions=range(1, 4), linear_feature_dimensions=range(1, 2), sharpness_values=[2],
                               threshold_values=[0], learning_rate_values=[1e-2], adam_learning_rate_values=[1e-2],
                               n_epoch_values=[10000])
 
     target0 = Constructor("Model_component",
-                                Constructor("input", Literal(1))
-                                & Constructor("output", Literal(1))
-                                & Constructor("structure", Literal((repo.Linear(1, 10, True), 1, 1)))
-                                )
+                          Constructor("input", Literal(1))
+                          & Constructor("output", Literal(1))
+                          & Constructor("structure", Literal((repo.Linear(1, 1, True), 1, 1)))
+                          )
 
     target1 = Constructor("Model",
                           Constructor("input", Literal(1))
                           & Constructor("output", Literal(1))
                           & Constructor("structure", Literal(
-                              (((repo.Linear(1, 10, True), 1, 1),),
+                              (((repo.Linear(1, 1, True), 1, 1),),
                                ((repo.ReLu(), 1, 1),),
-                               ((repo.Linear(1, 10, True), 1, 1),))
+                               ((repo.Linear(1, 1, True), 1, 1),))
                           ))
                           )
 
@@ -1534,7 +1573,14 @@ if __name__ == "__main__":
                           ))
                           )
 
-    target = target2
+    target3 = Constructor("Learner", target1
+                          & Constructor("Loss", Constructor("type", Literal(repo.MSEloss())))
+                          & Constructor("Optimizer", Constructor("type", Literal(repo.Adam(1e-2))))
+                          & Constructor("learning_rate", Literal(1e-2))
+                          & Constructor("epochs", Literal(10000))
+                          )
+
+    target = target3
     synthesizer = Synthesizer(repo.specification(), {})
 
     print(target)
@@ -1544,4 +1590,5 @@ if __name__ == "__main__":
     terms = solution_space.enumerate_trees(target, 10)
 
     for t in terms:
+        #print(t)
         print(t.interpret(repo.pretty_term_algebra()))
