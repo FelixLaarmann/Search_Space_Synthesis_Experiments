@@ -460,10 +460,6 @@ class Labeled_DAG_Repository:
                 # TODO: How to handel DAG Criteria in normalization?
             return value
 
-
-
-
-
     @staticmethod
     def swaplaw1(head: DerivationTree[Any, str, Any], tail: DerivationTree[Any, str, Any]) -> bool:
         """
@@ -487,8 +483,9 @@ class Labeled_DAG_Repository:
             left_term_root = left_term.root
             right_head_root = right_head.root
             right_tail_root = right_tail.root
-            if (left_term_root == "swap") and "beside_cons" in right_head_root and "before_singleton" in right_tail_root:
-                if len(left_term.children) != 4 or len(right_head.children) != 11 or len(right_tail.children) != 6:
+            if (
+                    left_term_root == "swap") and "beside_cons" in right_head_root and "before_singleton" in right_tail_root:
+                if len(left_term.children) != 19 or len(right_head.children) != 11 or len(right_tail.children) != 6:
                     raise ValueError("Derivation trees have not the expected shape.")
                 m = left_term.children[1]
                 n = left_term.children[2]
@@ -506,14 +503,14 @@ class Labeled_DAG_Repository:
                     right_swap = right_tail_term.children[4]
                     right_swap_root = right_swap.root
                     if right_swap_root == "swap":
-                        if len(right_swap.children) != 4:
+                        if len(right_swap.children) != 19:
                             raise ValueError("Derivation trees have not the expected shape.")
                         p = right_swap.children[1]
                         q = right_swap.children[2]
                         if m == y_m and n == x_n and p == x_p and q == y_q:
                             return False
             elif (left == "swap") and "beside_cons" in right_head_root and "before_cons" in right_tail_root:
-                if len(left_term.children) != 4 or len(right_head.children) != 11 or len(right_tail.children) != 9:
+                if len(left_term.children) != 19 or len(right_head.children) != 11 or len(right_tail.children) != 9:
                     raise ValueError("Derivation trees have not the expected shape.")
                 m = left_term.children[1]
                 n = left_term.children[2]
@@ -531,7 +528,7 @@ class Labeled_DAG_Repository:
                     right_swap = right_tail_head.children[4]
                     right_swap_root = right_swap.root
                     if right_swap_root == "swap":
-                        if len(right_swap.children) != 4:
+                        if len(right_swap.children) != 19:
                             raise ValueError("Derivation trees have not the expected shape.")
                         p = right_swap.children[1]
                         q = right_swap.children[2]
@@ -564,27 +561,28 @@ class Labeled_DAG_Repository:
             left_tail_root = left_tail.root
             right_term_root = right_term.root
             if (left_swap == "swap") and "beside_singleton" in left_tail_root and "beside_cons" in right_term_root:
-                if len(left_head.children) != 4 or len(left_tail.children) != 5 or len(right_term.children) != 11:
+                if len(left_head.children) != 19 or len(left_tail.children) != 5 or len(right_term.children) != 11:
                     raise ValueError("Derivation trees have not the expected shape.")
                 m = left_head.children[1]
                 n = left_head.children[2]
-                left_tail_term = left_tail.children[4] # swap(p, 0, p)
-                right_head = right_term.children[9] # swap(n, 0, n)
+                left_tail_term = left_tail.children[4]  # swap(p, 0, p)
+                right_head = right_term.children[9]  # swap(n, 0, n)
                 right_tail = right_term.children[10]
 
                 left_tail_swap = left_tail_term.root
                 right_head_root = right_head.root
                 right_tail_root = right_tail.root
                 if left_tail_swap == "edges" and right_head_root == "edges" and "beside_singleton" in right_tail_root:
-                    if len(left_tail_term.children) != 2 or len(right_head.children) != 2 or len(right_tail.children) != 5:
+                    if len(left_tail_term.children) != 17 or len(right_head.children) != 17 or len(
+                            right_tail.children) != 5:
                         raise ValueError("Derivation trees have not the expected shape.")
                     p = left_tail_term.children[0]
                     right_n = right_head.children[0]
 
-                    right_tail_term = right_tail.children[4] # swap(m+p, m, p)
+                    right_tail_term = right_tail.children[4]  # swap(m+p, m, p)
                     right_tail_term_root = right_tail_term.root
                     if (right_tail_term_root == "swap") and n == right_n:
-                        if len(right_tail_term.children) != 4:
+                        if len(right_tail_term.children) != 19:
                             raise ValueError("Derivation trees have not the expected shape.")
                         right_m = right_tail_term.children[1]
                         right_p = right_tail_term.children[2]
@@ -601,7 +599,7 @@ class Labeled_DAG_Repository:
             left_tail_root = left_tail.root
             right_term_root = right_term.root
             if (left_swap == "swap") and "beside_singleton" in left_tail_root and "beside_cons" in right_term_root:
-                if len(left_head.children) != 4 or len(left_tail.children) != 5 or len(right_term.children) != 11:
+                if len(left_head.children) != 19 or len(left_tail.children) != 5 or len(right_term.children) != 11:
                     raise ValueError("Derivation trees have not the expected shape.")
                 m = left_head.children[1]
                 n = left_head.children[2]
@@ -613,7 +611,7 @@ class Labeled_DAG_Repository:
                 right_head_root = right_head.root
                 right_tail_root = right_tail.root
                 if left_tail_swap == "edges" and right_head_root == "edges" and "beside_singleton" in right_tail_root:
-                    if len(left_tail_term.children) != 2 or len(right_head.children) != 2 or len(
+                    if len(left_tail_term.children) != 17 or len(right_head.children) != 17 or len(
                             right_tail.children) != 5:
                         raise ValueError("Derivation trees have not the expected shape.")
                     p = left_tail_term.children[0]
@@ -622,7 +620,7 @@ class Labeled_DAG_Repository:
                     right_tail_term = right_tail.children[4]  # swap(m+p, m, p)
                     right_tail_term_root = right_tail_term.root
                     if right_tail_term_root == "swap" and n == right_n:
-                        if len(right_tail_term.children) != 4:
+                        if len(right_tail_term.children) != 19:
                             raise ValueError("Derivation trees have not the expected shape.")
                         right_m = right_tail_term.children[1]
                         right_p = right_tail_term.children[2]
@@ -648,11 +646,10 @@ class Labeled_DAG_Repository:
             left_term = head.children[4]
             right_term = tail.children[5]
 
-
             left_term_root = left_term.root
             right_term_root = right_term.root
             if (left_term_root == "swap") and "beside_singleton" in right_term_root:
-                if len(left_term.children) != 4 or len(right_term.children) != 5:
+                if len(left_term.children) != 19 or len(right_term.children) != 5:
                     raise ValueError("Derivation trees have not the expected shape.")
                 m = left_term.children[1]
                 n = left_term.children[2]
@@ -660,7 +657,7 @@ class Labeled_DAG_Repository:
                 right_beside = right_term.children[4]
                 right_beside_root = right_beside.root
                 if right_beside_root == "swap" or right_beside_root == "swap":
-                    if len(right_beside.children) != 4:
+                    if len(right_beside.children) != 19:
                         raise ValueError("Derivation trees have not the expected shape.")
                     right_n = right_beside.children[1]
                     right_m = right_beside.children[2]
@@ -672,11 +669,10 @@ class Labeled_DAG_Repository:
             left_term = head.children[4]
             right_term = tail.children[7]
 
-
             left_term_root = left_term.root
             right_term_root = right_term.root
             if (left_term_root == "swap") and "beside_singleton" in right_term_root:
-                if len(left_term.children) != 4 or len(right_term.children) != 5:
+                if len(left_term.children) != 19 or len(right_term.children) != 5:
                     raise ValueError("Derivation trees have not the expected shape.")
                 m = left_term.children[1]
                 n = left_term.children[2]
@@ -715,7 +711,7 @@ class Labeled_DAG_Repository:
             left_tail_root = left_tail.root
             right_term_root = right_term.root
             if left_head_root == "edges" and "beside_singleton" in left_tail_root and "beside_cons" in right_term_root:
-                if len(left_head.children) != 2 or len(left_tail.children) != 5 or len(right_term.children) != 11:
+                if len(left_head.children) != 17 or len(left_tail.children) != 5 or len(right_term.children) != 11:
                     raise ValueError("Derivation trees have not the expected shape.")
                 m = left_head.children[0]
 
@@ -727,7 +723,8 @@ class Labeled_DAG_Repository:
                 right_head_root = right_head.root
                 right_tail_root = right_tail.root
                 if left_tail_term_root == "swap" and right_head_root == "swap" and "beside_singleton" in right_tail_root:
-                    if len(left_tail_term.children) != 4 or len(right_head.children) != 4 or len(right_tail.children) != 5:
+                    if len(left_tail_term.children) != 19 or len(right_head.children) != 19 or len(
+                            right_tail.children) != 5:
                         raise ValueError("Derivation trees have not the expected shape.")
                     n = left_tail_term.children[1]
                     p = left_tail_term.children[2]
@@ -739,7 +736,7 @@ class Labeled_DAG_Repository:
                     right_tail_term_root = right_tail_term.root
 
                     if right_tail_term_root == "edges" and m == right_m and p == right_p:
-                        if len(right_tail_term.children) != 2:
+                        if len(right_tail_term.children) != 17:
                             raise ValueError("Derivation trees have not the expected shape.")
                         right_n = right_tail_term.children[0]
                         if n == right_n:
@@ -756,7 +753,7 @@ class Labeled_DAG_Repository:
             left_tail_root = left_tail.root
             right_term_root = right_term.root
             if left_head_root == "edges" and "beside_singleton" in left_tail_root and "beside_cons" in right_term_root:
-                if len(left_head.children) != 2 or len(left_tail.children) != 5 or len(right_term.children) != 11:
+                if len(left_head.children) != 17 or len(left_tail.children) != 5 or len(right_term.children) != 11:
                     raise ValueError("Derivation trees have not the expected shape.")
                 m = left_head.children[0]
 
@@ -768,7 +765,7 @@ class Labeled_DAG_Repository:
                 right_head_root = right_head.root
                 right_tail_root = right_tail.root
                 if left_tail_term_root == "swap" and right_head_root == "swap" and "beside_singleton" in right_tail_root:
-                    if len(left_tail_term.children) != 4 or len(right_head.children) != 4 or len(
+                    if len(left_tail_term.children) != 19 or len(right_head.children) != 19 or len(
                             right_tail.children) != 5:
                         raise ValueError("Derivation trees have not the expected shape.")
                     n = left_tail_term.children[1]
@@ -781,7 +778,7 @@ class Labeled_DAG_Repository:
                     right_tail_term_root = right_tail_term.root
 
                     if right_tail_term_root == "edges" and m == right_m and p == right_p:
-                        if len(right_tail_term.children) != 2:
+                        if len(right_tail_term.children) != 17:
                             raise ValueError("Derivation trees have not the expected shape.")
                         right_n = right_tail_term.children[0]
                         if n == right_n:
@@ -818,28 +815,60 @@ class Labeled_DAG_Repository:
             # (m parallel) edges are swaps with n=0
             "edges": SpecificationBuilder()
             .parameter("io", dimension)
-            .parameter("para", para_labels, lambda v: [(("swap", 0, v["io"]), v["io"], v["io"]),
-                                                       (("swap", 0, None), v["io"], v["io"]),
-                                                       (("swap", None, v["io"]), v["io"], v["io"]),
-                                                       (("swap", None, None), v["io"], v["io"]),
-                                                       (("swap", 0, v["io"]), v["io"], None),
-                                                       (("swap", 0, None), v["io"], None),
-                                                       (("swap", None, v["io"]), v["io"], None),
-                                                       (("swap", None, None), v["io"], None),
-                                                       (("swap", 0, v["io"]), None, v["io"]),
-                                                       (("swap", 0, None), None, v["io"]),
-                                                       (("swap", None, v["io"]), None, v["io"]),
-                                                       (("swap", None, None), None, v["io"]),
-                                                       (("swap", 0, v["io"]), None, None),
-                                                       (("swap", 0, None), None, None),
-                                                       (("swap", None, v["io"]), None, None),
-                                                       (("swap", None, None), None, None), None])
+            #.parameter("para", para_labels, lambda v: [(("swap", 0, v["io"]), v["io"], v["io"]),
+            #                                           (("swap", 0, None), v["io"], v["io"]),
+            #                                           (("swap", None, v["io"]), v["io"], v["io"]),
+            #                                           (("swap", None, None), v["io"], v["io"]),
+            #                                           (("swap", 0, v["io"]), v["io"], None),
+            #                                           (("swap", 0, None), v["io"], None),
+            #                                           (("swap", None, v["io"]), v["io"], None),
+            #                                           (("swap", None, None), v["io"], None),
+            #                                           (("swap", 0, v["io"]), None, v["io"]),
+            #                                           (("swap", 0, None), None, v["io"]),
+            #                                           (("swap", None, v["io"]), None, v["io"]),
+            #                                           (("swap", None, None), None, v["io"]),
+            #                                           (("swap", 0, v["io"]), None, None),
+            #                                           (("swap", 0, None), None, None),
+            #                                           (("swap", None, v["io"]), None, None),
+            #                                           (("swap", None, None), None, None), None])
                                                         # (None, None, None)])
+            .parameter("para1", para_labels, lambda v: [(("swap", 0, v["io"]), v["io"], v["io"])])
+            .parameter("para2", para_labels, lambda v: [(("swap", 0, None), v["io"], v["io"])])
+            .parameter("para3", para_labels, lambda v: [(("swap", None, v["io"]), v["io"], v["io"])])
+            .parameter("para4", para_labels, lambda v: [(("swap", None, None), v["io"], v["io"])])
+            .parameter("para5", para_labels, lambda v: [(("swap", 0, v["io"]), v["io"], None)])
+            .parameter("para6", para_labels, lambda v: [(("swap", 0, None), v["io"], None)])
+            .parameter("para7", para_labels, lambda v: [(("swap", None, v["io"]), v["io"], None)])
+            .parameter("para8", para_labels, lambda v: [(("swap", None, None), v["io"], None)])
+            .parameter("para9", para_labels, lambda v: [(("swap", 0, v["io"]), None, v["io"])])
+            .parameter("para10", para_labels, lambda v: [(("swap", 0, None), None, v["io"])])
+            .parameter("para11", para_labels, lambda v: [(("swap", None, v["io"]), None, v["io"])])
+            .parameter("para12", para_labels, lambda v: [(("swap", None, None), None, v["io"])])
+            .parameter("para13", para_labels, lambda v: [(("swap", 0, v["io"]), None, None)])
+            .parameter("para14", para_labels, lambda v: [(("swap", 0, None), None, None)])
+            .parameter("para15", para_labels, lambda v: [(("swap", None, v["io"]), None, None)])
+            .parameter("para16", para_labels, lambda v: [(("swap", None, None), None, None)])
             .suffix(Constructor("DAG_component", Constructor("input", Var("io"))
                                 & Constructor("input", Literal(None))
                                 & Constructor("output", Var("io"))
                                 & Constructor("output", Literal(None))
-                                & Constructor("structure", Var("para"))
+                                #& Constructor("structure", Var("para"))
+                                & Constructor("structure", Var("para1"))
+                                & Constructor("structure", Var("para2"))
+                                & Constructor("structure", Var("para3"))
+                                & Constructor("structure", Var("para4"))
+                                & Constructor("structure", Var("para5"))
+                                & Constructor("structure", Var("para6"))
+                                & Constructor("structure", Var("para7"))
+                                & Constructor("structure", Var("para8"))
+                                & Constructor("structure", Var("para9"))
+                                & Constructor("structure", Var("para10"))
+                                & Constructor("structure", Var("para11"))
+                                & Constructor("structure", Var("para12"))
+                                & Constructor("structure", Var("para13"))
+                                & Constructor("structure", Var("para14"))
+                                & Constructor("structure", Var("para15"))
+                                & Constructor("structure", Var("para16"))
                                 & Constructor("structure", Literal(None))
                                 ) & Constructor("ID")
                     ),
@@ -848,28 +877,60 @@ class Labeled_DAG_Repository:
             .parameter("io", dimension)
             .parameter("n", dimension, lambda v: range(1, v["io"]))
             .parameter("m", dimension, lambda v: [v["io"] - v["n"]]) # m > 0
-            .parameter("para", para_labels, lambda v: [(("swap", v["n"], v["m"]), v["io"], v["io"]),
-                                                       (("swap", v["n"], None), v["io"], v["io"]),
-                                                       (("swap", None, v["m"]), v["io"], v["io"]),
-                                                       (("swap", None, None), v["io"], v["io"]),
-                                                       (("swap", v["n"], v["m"]), v["io"], None),
-                                                       (("swap", v["n"], None), v["io"], None),
-                                                       (("swap", None, v["m"]), v["io"], None),
-                                                       (("swap", None, None), v["io"], None),
-                                                       (("swap", v["n"], v["m"]), None, v["io"]),
-                                                       (("swap", v["n"], None), None, v["io"]),
-                                                       (("swap", None, v["m"]), None, v["io"]),
-                                                       (("swap", None, None), None, v["io"]),
-                                                       (("swap", v["n"], v["m"]), None, None),
-                                                       (("swap", v["n"], None), None, None),
-                                                       (("swap", None, v["m"]), None, None),
-                                                       (("swap", None, None), None, None), None])
+            #.parameter("para", para_labels, lambda v: [(("swap", v["n"], v["m"]), v["io"], v["io"]),
+            #                                           (("swap", v["n"], None), v["io"], v["io"]),
+            #                                           (("swap", None, v["m"]), v["io"], v["io"]),
+            #                                           (("swap", None, None), v["io"], v["io"]),
+            #                                           (("swap", v["n"], v["m"]), v["io"], None),
+            #                                           (("swap", v["n"], None), v["io"], None),
+            #                                           (("swap", None, v["m"]), v["io"], None),
+            #                                           (("swap", None, None), v["io"], None),
+            #                                           (("swap", v["n"], v["m"]), None, v["io"]),
+            #                                           (("swap", v["n"], None), None, v["io"]),
+            #                                           (("swap", None, v["m"]), None, v["io"]),
+            #                                           (("swap", None, None), None, v["io"]),
+            #                                           (("swap", v["n"], v["m"]), None, None),
+            #                                           (("swap", v["n"], None), None, None),
+            #                                           (("swap", None, v["m"]), None, None),
+            #                                           (("swap", None, None), None, None), None])
                                                        #(None, None, None)])
+            .parameter("para1", para_labels, lambda v: [(("swap", v["n"], v["m"]), v["io"], v["io"])])
+            .parameter("para2", para_labels, lambda v: [(("swap", v["n"], None), v["io"], v["io"])])
+            .parameter("para3", para_labels, lambda v: [(("swap", None, v["m"]), v["io"], v["io"])])
+            .parameter("para4", para_labels, lambda v: [(("swap", None, None), v["io"], v["io"])])
+            .parameter("para5", para_labels, lambda v: [(("swap", v["n"], v["m"]), v["io"], None)])
+            .parameter("para6", para_labels, lambda v: [(("swap", v["n"], None), v["io"], None)])
+            .parameter("para7", para_labels, lambda v: [(("swap", None, v["m"]), v["io"], None)])
+            .parameter("para8", para_labels, lambda v: [(("swap", None, None), v["io"], None)])
+            .parameter("para9", para_labels, lambda v: [(("swap", v["n"], v["m"]), None, v["io"])])
+            .parameter("para10", para_labels, lambda v: [(("swap", v["n"], None), None, v["io"])])
+            .parameter("para11", para_labels, lambda v: [(("swap", None, v["m"]), None, v["io"])])
+            .parameter("para12", para_labels, lambda v: [(("swap", None, None), None, v["io"])])
+            .parameter("para13", para_labels, lambda v: [(("swap", v["n"], v["m"]), None, None)])
+            .parameter("para14", para_labels, lambda v: [(("swap", v["n"], None), None, None)])
+            .parameter("para15", para_labels, lambda v: [(("swap", None, v["m"]), None, None)])
+            .parameter("para16", para_labels, lambda v: [(("swap", None, None), None, None)])
             .suffix(Constructor("DAG_component", Constructor("input", Var("io"))
                                 & Constructor("input", Literal(None))
                                 & Constructor("output", Var("io"))
                                 & Constructor("output", Literal(None))
-                                & Constructor("structure", Var("para"))
+                                #& Constructor("structure", Var("para"))
+                                & Constructor("structure", Var("para1"))
+                                & Constructor("structure", Var("para2"))
+                                & Constructor("structure", Var("para3"))
+                                & Constructor("structure", Var("para4"))
+                                & Constructor("structure", Var("para5"))
+                                & Constructor("structure", Var("para6"))
+                                & Constructor("structure", Var("para7"))
+                                & Constructor("structure", Var("para8"))
+                                & Constructor("structure", Var("para9"))
+                                & Constructor("structure", Var("para10"))
+                                & Constructor("structure", Var("para11"))
+                                & Constructor("structure", Var("para12"))
+                                & Constructor("structure", Var("para13"))
+                                & Constructor("structure", Var("para14"))
+                                & Constructor("structure", Var("para15"))
+                                & Constructor("structure", Var("para16"))
                                 & Constructor("structure", Literal(None))
                                 ) & Constructor("non_ID")
                     ),
@@ -877,20 +938,35 @@ class Labeled_DAG_Repository:
             .parameter("l", labels)
             .parameter("i", dimension)
             .parameter("o", dimension)
-            .parameter("para", para_labels, lambda v: [(v["l"], v["i"], v["o"]),
-                                                       (v["l"], v["i"], None),
-                                                       (v["l"], None, v["o"]),
-                                                       (None, v["i"], v["o"]),
-                                                       (v["l"], None, None),
-                                                       (None, None, v["o"]),
-                                                       (None, v["i"], None), None])
+            #.parameter("para", para_labels, lambda v: [(v["l"], v["i"], v["o"]),
+            #                                           (v["l"], v["i"], None),
+            #                                           (v["l"], None, v["o"]),
+            #                                           (None, v["i"], v["o"]),
+            #                                           (v["l"], None, None),
+            #                                           (None, None, v["o"]),
+            #                                           (None, v["i"], None), None])
                                                        #(None, None, None)])
+
+            .parameter("para1", para_labels, lambda v: [(v["l"], v["i"], v["o"])])
+            .parameter("para2", para_labels, lambda v: [(v["l"], v["i"], None)])
+            .parameter("para3", para_labels, lambda v: [(v["l"], None, v["o"])])
+            .parameter("para4", para_labels, lambda v: [(None, v["i"], v["o"])])
+            .parameter("para5", para_labels, lambda v: [(v["l"], None, None)])
+            .parameter("para6", para_labels, lambda v: [(None, None, v["o"])])
+            .parameter("para7", para_labels, lambda v: [(None, v["i"], None)])
             .suffix(Constructor("DAG_component",
                                 Constructor("input", Var("i"))
                                 & Constructor("input", Literal(None))
                                 & Constructor("output", Var("o"))
                                 & Constructor("output", Literal(None))
-                                & Constructor("structure", Var("para"))
+                                #& Constructor("structure", Var("para"))
+                                & Constructor("structure", Var("para1"))
+                                & Constructor("structure", Var("para2"))
+                                & Constructor("structure", Var("para3"))
+                                & Constructor("structure", Var("para4"))
+                                & Constructor("structure", Var("para5"))
+                                & Constructor("structure", Var("para6"))
+                                & Constructor("structure", Var("para7"))
                                 & Constructor("structure", Literal(None))
                                 ) & Constructor("non_ID")
                     ),
@@ -1141,11 +1217,11 @@ class Labeled_DAG_Repository:
 
     def pretty_term_algebra(self):
         return {
-            "edges": (lambda io, para: f"edges({io})"),
+            "edges": (lambda io, para1, para2, para3, para4, para5, para6, para7, para8, para9, para10, para11, para12, para13, para14, para15, para16: f"edges({io})"),
 
-            "swap": (lambda io, n, m, para: f"swap({io}, {n}, {m})"),
+            "swap": (lambda io, n, m, para1, para2, para3, para4, para5, para6, para7, para8, para9, para10, para11, para12, para13, para14, para15, para16: f"swap({io}, {n}, {m})"),
 
-            "node": (lambda l, i, o, para: f"node({l}, {i}, {o})"),
+            "node": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: f"node({l}, {i}, {o})"),
 
             "beside_singleton": (lambda i, o, ls, para, x: f"{x})"),
 
@@ -1163,30 +1239,24 @@ class Labeled_DAG_Repository:
 
     def edgelist_algebra(self):
         return {
-            "edges": (lambda io, para: lambda id, inputs: ([], inputs, ({}, {}))),
+            "edges": (lambda io, para1, para2, para3, para4, para5, para6, para7, para8, para9, para10, para11, para12, para13, para14, para15, para16: lambda id, inputs: ([], inputs, {})),
 
-            "swap": (lambda io, n, m, para: lambda id, inputs: ([], inputs[n:] + inputs[:n], ({}, {}))),
+            "swap": (lambda io, n, m, para1, para2, para3, para4, para5, para6, para7, para8, para9, para10, para11, para12, para13, para14, para15, para16: lambda id, inputs: ([], inputs[n:] + inputs[:n], {})),
 
-            "node": (lambda l, i, o, para: lambda id, inputs: ([(x, l + str(id)) for x in inputs],
-                                                               [l + str(id) for _ in range(0, o)],
-                                                               ({l + str(id): id}, {l + str(id): l}))),
+            "node": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: lambda id, inputs: ([(x,str((l, i, o)) + str(id)) for x in inputs],  [str((l, i, o)) + str(id) for _ in range(0,o)], {str((l, i, o)) + str(id) : id})),
 
             "beside_singleton": (lambda i, o, ls, para, x: x),
 
             "beside_cons": (lambda i, i1, i2, o, o1, o2, ls, head, tail, x, y: lambda id, inputs:
-            (x(id, inputs[:i1])[0] + y((id[0], id[1] + 0.2), inputs[i1:])[0],
-             x(id, inputs[:i1])[1] + y((id[0], id[1] + 0.2), inputs[i1:])[1],
-             x(id, inputs[:i1])[2] | y((id[0], id[1] + 0.2), inputs[i1:])[2])),
+                (x(id, inputs[:i1])[0] + y((id[0], id[1] + 0.2), inputs[i1:])[0],
+                 x(id, inputs[:i1])[1] + y((id[0], id[1] + 0.2), inputs[i1:])[1],
+                 x(id, inputs[:i1])[2] | y((id[0], id[1] + 0.2), inputs[i1:])[2])),
 
             "before_singleton": (lambda i, o, r, ls, ls1, x: (x, i)),
 
             "before_cons": (lambda i, j, o, r, ls, head, tail, x, y: (lambda id, inputs:
-                                                                      (y[0]((id[0] + 2.5, id[1]), x(id, inputs)[1])[0] +
-                                                                       x(id, inputs)[0],
+                                                                      (y[0]((id[0] + 2.5, id[1]), x(id, inputs)[1])[0] + x(id, inputs)[0],
                                                                        y[0]((id[0] + 2.5, id[1]), x(id, inputs)[1])[1],
-                                                                       (y[0]((id[0] + 2.5, id[1]), x(id, inputs)[1])[2][
-                                                                            0] | x(id, inputs)[2][0],
-                                                                        y[0]((id[0] + 2.5, id[1]), x(id, inputs)[1])[2][
-                                                                            1] | x(id, inputs)[2][1])),
+                                                                       y[0]((id[0] + 2.5, id[1]), x(id, inputs)[1])[2] | x(id, inputs)[2]),
                                                                       i)),
         }
