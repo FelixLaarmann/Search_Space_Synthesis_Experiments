@@ -1,6 +1,7 @@
-from cosy import SpecificationBuilder, Constructor, Literal, Var, Synthesizer
-from cosy.tree import Tree
-from cosy.types import DataGroup, Group
+from cl3s import (SpecificationBuilder, Constructor, Literal, Var, Group, DataGroup,
+                  DerivationTree)
+from typing import Any
+
 
 class Labeled_DAG_Repository:
     """
@@ -464,7 +465,7 @@ class Labeled_DAG_Repository:
 
 
     @staticmethod
-    def swaplaw1(head: Tree[str], tail: Tree[str]) -> bool:
+    def swaplaw1(head: DerivationTree[Any, str, Any], tail: DerivationTree[Any, str, Any]) -> bool:
         """
         before(swap(m+n, m, n), before(beside(x(n,p), y(m,q)), swap(p+q, p, q)))
         ->
@@ -539,7 +540,7 @@ class Labeled_DAG_Repository:
         return True
 
     @staticmethod
-    def swaplaw2(head: Tree[str], tail: Tree[str]) -> bool:
+    def swaplaw2(head: DerivationTree[Any, str, Any], tail: DerivationTree[Any, str, Any]) -> bool:
         """
         before(besides(swap(m+n, m, n), copy(p,edge())), besides(copy(n, edge()), swap(m+p, m, p)))
         ->
@@ -630,7 +631,7 @@ class Labeled_DAG_Repository:
         return True
 
     @staticmethod
-    def swaplaw3(head: Tree[str], tail: Tree[str]) -> bool:
+    def swaplaw3(head: DerivationTree[Any, str, Any], tail: DerivationTree[Any, str, Any]) -> bool:
         """
         before(swap(m+n, m, n), swap(n+m, n, m))
         ->
@@ -692,7 +693,7 @@ class Labeled_DAG_Repository:
         return True
 
     @staticmethod
-    def swaplaw4(head: Tree[str], tail: Tree[str]) -> bool:
+    def swaplaw4(head: DerivationTree[Any, str, Any], tail: DerivationTree[Any, str, Any]) -> bool:
         """
         before(besides(copy(m, edge()), swap(n+p, n, p)), besides(swap(m+p, m, p), copy(n,edge())))
         ->
@@ -787,7 +788,7 @@ class Labeled_DAG_Repository:
                             return False
         return True
 
-    def dag_constraint(self, head: Tree[str], tail: Tree[str], i : int) -> bool:
+    def dag_constraint(self, head: DerivationTree[Any, str, Any], tail: DerivationTree[Any, str, Any], i : int) -> bool:
         x = head.interpret(self.edgelist_algebra())
         y = tail.interpret(self.edgelist_algebra())
         id = (0,0)

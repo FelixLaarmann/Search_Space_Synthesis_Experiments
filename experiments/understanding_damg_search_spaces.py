@@ -1,5 +1,5 @@
 from synthesis.labeled_damg import Labeled_DAMG_Repository
-from cosy import Constructor, Literal, Synthesizer
+from cl3s import Constructor, Literal, SearchSpaceSynthesizer
 
 import networkx as nx
 import matplotlib.pyplot as plt
@@ -113,9 +113,9 @@ if __name__ == "__main__":
 
     print(target)
 
-    synthesizer = Synthesizer(repo.specification(), {})
+    synthesizer = SearchSpaceSynthesizer(repo.specification(), {})
 
-    search_space = synthesizer.construct_solution_space(target).prune()
+    search_space = synthesizer.construct_search_space(target).prune()
     print("finish synthesis, start enumerate")
     terms = search_space.enumerate_trees(target, number_of_terms)
 

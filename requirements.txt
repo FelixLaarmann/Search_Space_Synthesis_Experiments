@@ -8,6 +8,7 @@ numpy==1.26.4
 scikit-learn==1.6.1
 scipy==1.12.0
 combinatory-synthesizer @ git+https://github.com/tudo-seal/cosy.git
+cl3s @git+https://github.com/FelixLaarmann/CL3S.git
 typing_extensions==4.13.2
 grakel==0.1.10
 pydot

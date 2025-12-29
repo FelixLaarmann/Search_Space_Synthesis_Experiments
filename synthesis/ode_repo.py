@@ -1,8 +1,6 @@
-from abc import ABC
-
-from cosy import SpecificationBuilder, Constructor, Literal, Var, Synthesizer
-from cosy.tree import Tree
-from cosy.types import DataGroup, Group
+from cl3s import (SpecificationBuilder, Constructor, Literal, Var, Group, DataGroup,
+                  DerivationTree)
+from typing import Any
 
 from dataclasses import dataclass
 
@@ -611,7 +609,7 @@ class ODE_DAG_Repository:
 
 
     @staticmethod
-    def swaplaw1(head: Tree[str], tail: Tree[str]) -> bool:
+    def swaplaw1(head: DerivationTree[Any, str, Any], tail: DerivationTree[Any, str, Any]) -> bool:
         """
         before(swap(m+n, m, n), before(beside(x(n,p), y(m,q)), swap(p+q, p, q)))
         ->
@@ -686,7 +684,7 @@ class ODE_DAG_Repository:
         return True
 
     @staticmethod
-    def swaplaw2(head: Tree[str], tail: Tree[str]) -> bool:
+    def swaplaw2(head: DerivationTree[Any, str, Any], tail: DerivationTree[Any, str, Any]) -> bool:
         """
         before(besides(swap(m+n, m, n), copy(p,edge())), besides(copy(n, edge()), swap(m+p, m, p)))
         ->
@@ -777,7 +775,7 @@ class ODE_DAG_Repository:
         return True
 
     @staticmethod
-    def swaplaw3(head: Tree[str], tail: Tree[str]) -> bool:
+    def swaplaw3(head: DerivationTree[Any, str, Any], tail: DerivationTree[Any, str, Any]) -> bool:
         """
         before(swap(m+n, m, n), swap(n+m, n, m))
         ->
@@ -839,7 +837,7 @@ class ODE_DAG_Repository:
         return True
 
     @staticmethod
-    def swaplaw4(head: Tree[str], tail: Tree[str]) -> bool:
+    def swaplaw4(head: DerivationTree[Any, str, Any], tail: DerivationTree[Any, str, Any]) -> bool:
         """
         before(besides(copy(m, edge()), swap(n+p, n, p)), besides(swap(m+p, m, p), copy(n,edge())))
         ->
@@ -934,7 +932,7 @@ class ODE_DAG_Repository:
                             return False
         return True
 
-    def dag_constraint(self, head: Tree[str], tail: Tree[str], i : int) -> bool:
+    def dag_constraint(self, head: DerivationTree[Any, str, Any], tail: DerivationTree[Any, str, Any], i : int) -> bool:
         x = head.interpret(self.edgelist_algebra())
         y = tail.interpret(self.edgelist_algebra())
         id = (0,0)
@@ -1581,13 +1579,14 @@ if __name__ == "__main__":
                           )
 
     target = target3
-    synthesizer = Synthesizer(repo.specification(), {})
+    from cl3s import SearchSpaceSynthesizer
+    synthesizer = SearchSpaceSynthesizer(repo.specification(), {})
 
     print(target)
 
-    solution_space = synthesizer.construct_solution_space(target).prune()
+    search_space = synthesizer.construct_search_space(target).prune()
     print("finish synthesis, start enumerate")
-    terms = solution_space.enumerate_trees(target, 10)
+    terms = search_space.enumerate_trees(target, 10)
 
     for t in terms:
         #print(t)
