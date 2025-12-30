@@ -1,5 +1,5 @@
 from cl3s import (SpecificationBuilder, Constructor, Literal, Var, Group, DataGroup,
-                  DerivationTree, SearchSpaceSynthesizer)
+                  DerivationTree)
 from typing import Any
 
 from dataclasses import dataclass
@@ -76,20 +76,22 @@ class ODE_DAG_Repository:
     """
 
     def __init__(self, dimensions, linear_feature_dimensions, sharpness_values, threshold_values, learning_rate_values,
-                 n_epoch_values):
+                 adam_learning_rate_values, n_epoch_values):
         # additionally to labeled nodes, we have (unlabelled) edges, that needs to be handled additionally
         self.dimensions = dimensions
         self.linear_feature_dimensions = linear_feature_dimensions
         self.sharpness_values = sharpness_values
         self.threshold_values = threshold_values
         self.learning_rate_values = learning_rate_values
+        self.adam_learning_rate_values = adam_learning_rate_values
         self.n_epoch_values = n_epoch_values
+        self.id_seed = 0
 
     @dataclass(frozen=True)
     class Linear:
-        in_features: int
-        out_features: int
-        bias: bool = True
+        in_features: int | None
+        out_features: int | None
+        bias: bool | None = True
 
     @dataclass(frozen=True)
     class Sigmoid:
@@ -97,23 +99,24 @@ class ODE_DAG_Repository:
 
     @dataclass(frozen=True)
     class ReLu:
-        inplace: bool = False
+        inplace: bool | None = False
 
     @dataclass(frozen=True)
     class Sharpness_Sigmoid:
-        sharpness: float
+        sharpness: float | None
 
     @dataclass(frozen=True)
-    class LTE:
-        threshold: float
+    class lte:
+        threshold: float | None
 
     @dataclass(frozen=True)
-    class Sum:
+    class Join:
         trivial = ()
 
     @dataclass(frozen=True)
-    class Product:
-        trivial = ()
+    class Swap:
+        swap_upper_n: int | None
+        with_lower_m: int | None
 
     class Label(Group):
         name = "Label"
@@ -143,13 +146,15 @@ class ODE_DAG_Repository:
 
         def iter_lte(self):
             for threshold in self.threshold_values:
-                yield ODE_DAG_Repository.LTE(threshold=threshold)
+                yield ODE_DAG_Repository.lte(threshold=threshold)
 
-        def iter_sum(self):
-            yield ODE_DAG_Repository.Sum()
+        def iter_id(self):
+            yield ODE_DAG_Repository.Join()
 
-        def iter_product(self):
-            yield ODE_DAG_Repository.Product()
+        def iter_swap(self):
+            for n in self.dimensions:
+                for m in self.dimensions:
+                    yield ODE_DAG_Repository.Swap(swap_upper_n=n, with_lower_m=m)
 
         def __iter__(self):
             yield from self.iter_linear()
@@ -157,71 +162,32 @@ class ODE_DAG_Repository:
             yield from self.iter_relu()
             yield from self.iter_sharpness_sigmoid()
             yield from self.iter_lte()
-            yield from self.iter_sum()
-            yield from self.iter_product()
+            yield from self.iter_id()
+            #yield from self.iter_swap()  # swap is not a node label!
 
         def __contains__(self, item):
-            if isinstance(item, ODE_DAG_Repository.Linear):
-                return ((item.in_features in self.linear_feature_dimensions) and
-                        (item.out_features in self.linear_feature_dimensions) and
-                        (isinstance(item.bias, bool)))
+            if item is None:
+                return True
+            elif isinstance(item, ODE_DAG_Repository.Linear):
+                return ((item.in_features is None or item.in_features in self.linear_feature_dimensions) and
+                        (item.out_features is None or item.out_features in self.linear_feature_dimensions) and
+                        (item.bias is None or isinstance(item.bias, bool)))
             elif isinstance(item, ODE_DAG_Repository.Sigmoid):
                 return True
             elif isinstance(item, ODE_DAG_Repository.ReLu):
-                return isinstance(item.inplace, bool)
+                return item.inplace is None or isinstance(item.inplace, bool)
             elif isinstance(item, ODE_DAG_Repository.Sharpness_Sigmoid):
-                return item.sharpness in self.sharpness_values
-            elif isinstance(item, ODE_DAG_Repository.LTE):
-                return item.threshold in self.threshold_values
-            elif isinstance(item, ODE_DAG_Repository.Sum):
+                return item.sharpness is None or item.sharpness in self.sharpness_values
+            elif isinstance(item, ODE_DAG_Repository.lte):
+                return item.threshold is None or item.threshold in self.threshold_values
+            elif isinstance(item, ODE_DAG_Repository.Join):
                 return True
-            elif isinstance(item, ODE_DAG_Repository.Product):
-                return True
+            #elif isinstance(item, ODE_DAG_Repository.Swap):
+            #    return ((item.swap_upper_n or None or item.swap_upper_n in self.dimensions) and
+            #            (item.with_lower_m is None or item.with_lower_m in self.dimensions))
+            # swap is not a node label!
             else:
                 return False
-
-    @dataclass(frozen=True)
-    class MSEloss:
-        reduction: str = "mean"
-
-    class Loss_Function(Group):
-        name = "Loss_Function"
-
-        def __init__(self):
-            pass
-
-        def __iter__(self):
-            yield ODE_DAG_Repository.MSEloss(reduction="mean")
-            yield ODE_DAG_Repository.MSEloss(reduction="sum")
-            yield ODE_DAG_Repository.MSEloss(reduction="none")
-
-        def __contains__(self, value):
-            return (isinstance(value, ODE_DAG_Repository.MSEloss) and (value.reduction in ["mean", "sum", "none"]))
-
-    @dataclass(frozen=True)
-    class Adam:
-        learning_rate: float = 0.001
-        betas: tuple[float, float] = (0.9, 0.999)
-        eps: float = 1e-08
-        weight_decay: float = 0.0
-        amsgrad: bool = False
-        maximize: bool = False
-        capturable: bool = False
-        differentiable: bool = False
-        decoupled_weight_decay: bool = False
-
-    class Optimizer(Group):
-        name = "Optimizer"
-
-        def __init__(self, learning_rate_values):
-            self.learning_rate_values = learning_rate_values
-
-        def __iter__(self):
-            for lr in self.learning_rate_values:
-                yield ODE_DAG_Repository.Adam(learning_rate=lr)
-
-        def __contains__(self, value):
-            return (isinstance(value, ODE_DAG_Repository.Adam) and (value.learning_rate in self.learning_rate_values))
 
     class Para(Group):
         name = "Para"
@@ -231,34 +197,31 @@ class ODE_DAG_Repository:
             self.dimensions = list(dimensions) + [None]
 
         def __iter__(self):
-            for l in self.labels:
-                if l is not None:
-                    for i in self.dimensions:
-                        if i is not None:
-                            for o in self.dimensions:
-                                if o is not None:
+            for i in self.dimensions:
+                if i is not None:
+                    for o in self.dimensions:
+                        if o is not None:
+                            for l in self.labels:
+                                if l is not None:
                                     yield l, i, o
-                                    if i == o:
-                                        for n in range (0, i):
-                                            m = i - n
-                                            assert m > 0
-                                            yield ("swap", n, m), i, o
+                            if i == o:
+                                for n in range(0, i):
+                                    m = i - n
+                                    assert m > 0
+                                    yield ODE_DAG_Repository.Swap(n, m), i, o
             yield None
 
+
         def __contains__(self, value):
-            return (value is None
-                    #or value in ["linear", "sigmoid", "relu", "sharpness_sigmoid", "lte", "sum", "product"]
-                    or (isinstance(value, tuple)
+            return value is None or (isinstance(value, tuple)
                                      and len(value) == 3
-                                     and (value[0] in self.labels
-                                          or (value[0][0] == "swap"
-                                              and (value[0][1] in self.dimensions
-                                                   or value[0][1] == 0)
-                                              and value[0][2] in self.dimensions))
+                                     and (value[0] in self.labels or isinstance(value[0], ODE_DAG_Repository.Swap))
                                      and value[1] in self.dimensions
                                      and value[2] in self.dimensions
-                                     # TODO: something like this? -> and value[1] == value[2] if not value[0] in self.labels and value[0][0] == "swap" else True
-                                     ))
+                                     and ((value[1] == value[2]
+                                          and (value[0].swap_upper_n or None or value[0].swap_upper_n in self.dimensions)
+                                          and (value[0].with_lower_m is None or value[0].with_lower_m in self.dimensions))
+                                          if isinstance(value[0], ODE_DAG_Repository.Swap) else True))
 
     class ParaTuples(Group):
         name = "ParaTuples"
@@ -295,10 +258,11 @@ class ODE_DAG_Repository:
                 if l is not None and r is not None:
                     if len(l) == 3 and l[0] is not None:
                         label, i, o = l
-                        if isinstance(label, tuple) and len(label) == 3 and label[0] == "swap" and label[1] == 0:
+                        if (isinstance(label, ODE_DAG_Repository.Swap) and label.swap_upper_n == 0):
                             if len(r) == 3 and r[0] is not None:
                                 right_label, right_i, right_o = r
-                                if isinstance(right_label, tuple) and len(right_label) == 3 and right_label[0] == "swap" and right_label[1] == 0:
+                                if (isinstance(right_label, ODE_DAG_Repository.Swap)
+                                        and right_label.swap_upper_n == 0):
                                     """
                                     beside(swap(n, 0, n), swap(m, 0, m))
                                     ->
@@ -314,13 +278,13 @@ class ODE_DAG_Repository:
                 for l, r in zip(value[:-1], value[1:]):
                     if len(l) == 3:
                         label, i, o = l
-                        if isinstance(label, tuple) and len(label) == 3 and label[0] == "swap" and label[1] == 0:
-                            n = label[2]
+                        if (isinstance(label, ODE_DAG_Repository.Swap) and label.swap_upper_n == 0):
+                            n = label.with_lower_m
                             if len(r) == 3 and r[0] is not None:
                                 right_label, right_i, right_o = r
-                                if (isinstance(right_label, tuple) and len(right_label) == 3 and
-                                        right_label[0] == "swap" and right_label[1] == 0):
-                                    m = right_label[2]
+                                if (isinstance(right_label, ODE_DAG_Repository.Swap)
+                                        and right_label.swap_upper_n == 0):
+                                    m = right_label.with_lower_m
                                     """
                                     beside(swap(n, 0, n), swap(m, 0, m))
                                     ->
@@ -329,7 +293,7 @@ class ODE_DAG_Repository:
                                     # i < len(new_value) is an invariant, because len(zip(value[:-1], value[1:])) == len(value) - 1
                                     before_i = new_value[:index]
                                     after_i = new_value[index+2:]
-                                    new_value = before_i + ((("swap", 0, n + m), n + m, n + m),) + after_i
+                                    new_value = before_i + ((ODE_DAG_Repository.Swap(0, n + m), n + m, n + m),) + after_i
                                     break
                     index += 1
                 value = new_value
@@ -345,6 +309,7 @@ class ODE_DAG_Repository:
             return super().__iter__()
 
         def __contains__(self, value):
+            # TODO: DAG Criteria: At most one edge between two nodes?
             return value is None or (isinstance(value, tuple) and all(True if v is None else v in self.para_tuples for v in value))
 
         def normalform(self, value) -> bool:
@@ -365,9 +330,9 @@ class ODE_DAG_Repository:
                         return False
                     if len(l) == 1 and l[0] is not None:
                         label, i, o = l[0]
-                        if isinstance(label, tuple) and len(label) == 3 and label[0] == "swap":
-                            m = label[1]
-                            n = label[2]
+                        if isinstance(label, ODE_DAG_Repository.Swap):
+                            m = label.swap_upper_n
+                            n = label.with_lower_m
                             if m == 0:
                                 """
                                 before(edge(), x)
@@ -382,9 +347,9 @@ class ODE_DAG_Repository:
                                 copy(m+n, edge())
                                 """
                                 right_label, right_i, right_o = r[0]
-                                if isinstance(right_label, tuple) and len(right_label) == 3 and right_label[0] == "swap":
-                                    right_m = right_label[1]
-                                    right_n = right_label[2]
+                                if isinstance(right_label, ODE_DAG_Repository.Swap):
+                                    right_m = right_label.swap_upper_n
+                                    right_n = right_label.with_lower_m
                                     if right_m is not None and right_n is not None:
                                         if m == right_n and n == right_m:
                                             return False
@@ -395,8 +360,8 @@ class ODE_DAG_Repository:
                         x
                         """
                         label, i, o = r[0]
-                        if isinstance(label, tuple) and len(label) == 3 and label[0] == "swap":
-                            if label[1] == 0:
+                        if isinstance(label, ODE_DAG_Repository.Swap):
+                            if label.swap_upper_n == 0:
                                 return False
                     if len(l) == 2 and len(r) == 2:
                         left_first, left_second = l
@@ -406,16 +371,16 @@ class ODE_DAG_Repository:
                             label_l_2, i_l_2, o_l_2 = left_second
                             label_r_1, i_r_1, o_r_1 = right_first
                             label_r_2, i_r_2, o_r_2 = right_second
-                            if isinstance(label_l_1, tuple) and len(label_l_1) == 3 and label_l_1[0] == "swap":
-                                m = label_l_1[1]
-                                n = label_l_1[2]
-                                if isinstance(label_l_2, tuple) and len(label_l_2) == 3 and label_l_2[0] == "swap" and label_l_2[1] == 0:
-                                    p = label_l_2[2]
-                                    if isinstance(label_r_1, tuple) and len(label_r_1) == 3 and label_r_1[0] == "swap" and label_r_1[1] == 0:
-                                        right_n = label_r_1[2]
-                                        if isinstance(label_r_2, tuple) and len(label_r_2) == 3 and label_r_2[0] == "swap":
-                                            right_m = label_r_2[1]
-                                            right_p = label_r_2[2]
+                            if isinstance(label_l_1, ODE_DAG_Repository.Swap):
+                                m = label_l_1.swap_upper_n
+                                n = label_l_1.with_lower_m
+                                if isinstance(label_l_2, ODE_DAG_Repository.Swap) and label_l_2.swap_upper_n == 0:
+                                    p = label_l_2.with_lower_m
+                                    if isinstance(label_r_1, ODE_DAG_Repository.Swap) and label_r_1.swap_upper_n == 0:
+                                        right_n = label_r_1.with_lower_m
+                                        if isinstance(label_r_2, ODE_DAG_Repository.Swap):
+                                            right_m = label_r_2.swap_upper_n
+                                            right_p = label_r_2.with_lower_m
                                             if m is not None and n is not None and p is not None and right_m is not None and right_n is not None and right_p is not None:
                                                 if m == right_m and n == right_n and p == right_p:
                                                     """
@@ -424,16 +389,16 @@ class ODE_DAG_Repository:
                                                     swap(m + n + p, m, n+p)
                                                     """
                                                     return False
-                            if isinstance(label_l_1, tuple) and len(label_l_1) == 3 and label_l_1[0] == "swap" and label_l_1[1] == 0:
-                                m = label_l_1[2]
-                                if isinstance(label_l_2, tuple) and len(label_l_2) == 3 and label_l_2[0] == "swap":
-                                    n = label_l_2[1]
-                                    p = label_l_2[2]
-                                    if isinstance(label_r_1, tuple) and len(label_r_1) == 3 and label_r_1[0] == "swap":
-                                        right_m = label_r_1[1]
-                                        right_p = label_r_1[2]
-                                        if isinstance(label_r_2, tuple) and len(label_r_2) == 3 and label_r_2[0] == "swap" and label_r_2[1] == 0:
-                                            right_n = label_r_2[2]
+                            if isinstance(label_l_1, ODE_DAG_Repository.Swap) and label_l_1.swap_upper_n == 0:
+                                m = label_l_1.with_lower_m
+                                if isinstance(label_l_2, ODE_DAG_Repository.Swap):
+                                    n = label_l_2.swap_upper_n
+                                    p = label_l_2.with_lower_m
+                                    if isinstance(label_r_1, ODE_DAG_Repository.Swap):
+                                        right_m = label_r_1.swap_upper_n
+                                        right_p = label_r_1.with_lower_m
+                                        if isinstance(label_r_2, ODE_DAG_Repository.Swap) and label_r_2.swap_upper_n == 0:
+                                            right_n = label_r_2.with_lower_m
                                             if m is not None and n is not None and p is not None and right_m is not None and right_n is not None and right_p is not None:
                                                 if m == right_m and n == right_n and p == right_p:
                                                     """
@@ -447,18 +412,18 @@ class ODE_DAG_Repository:
                 if l is not None and m is not None and r is not None:
                     if len(l) == 1 and l[0] is not None:
                         left_label, left_i, left_o = l[0]
-                        if isinstance(left_label, tuple) and len(left_label) == 3 and left_label[0] == "swap":
-                            left_m = left_label[1]
-                            left_n = left_label[2]
+                        if isinstance(left_label, ODE_DAG_Repository.Swap):
+                            left_m = left_label.swap_upper_n
+                            left_n = left_label.with_lower_m
                             if len(m) == 2 and len(r) == 1 and r[0] is not None:
                                 mid_first, mid_second = m
                                 right_label, right_i, right_o = r[0]
                                 if mid_first is not None and mid_second is not None:
                                     mid_first_label, mid_n, mid_p = mid_first
                                     mid_second_label, mid_m, mid_q = mid_second
-                                    if isinstance(right_label, tuple) and len(right_label) == 3 and right_label[0] == "swap":
-                                        right_p = right_label[1]
-                                        right_q = right_label[2]
+                                    if isinstance(right_label, ODE_DAG_Repository.Swap):
+                                        right_p = right_label.swap_upper_n
+                                        right_q = right_label.with_lower_m
                                         if left_m is not None and left_n is not None and mid_m is not None and mid_n is not None and mid_p is not None and mid_q is not None and right_p is not None and right_q is not None:
                                             if left_m == mid_m and left_n == mid_n and right_p == mid_p and right_q == mid_q:
                                                 """
@@ -479,9 +444,9 @@ class ODE_DAG_Repository:
                 for l, r in zip(value[:-1], value[1:]):
                     if len(l) == 1:
                         label, i, o = l[0]
-                        if isinstance(label, tuple) and len(label) == 3 and label[0] == "swap":
-                            m = label[1]
-                            n = label[2]
+                        if isinstance(label, ODE_DAG_Repository.Swap):
+                            m = label.swap_upper_n
+                            n = label.with_lower_m
                             if m == 0:
                                 """
                                 before(edge(), x)
@@ -500,14 +465,13 @@ class ODE_DAG_Repository:
                                 copy(m+n, edge())
                                 """
                                 right_label, right_i, right_o = r[0]
-                                if (isinstance(right_label, tuple) and len(right_label) == 3
-                                        and right_label[0] == "swap"):
-                                    right_m = right_label[1]
-                                    right_n = right_label[2]
+                                if isinstance(right_label, ODE_DAG_Repository.Swap):
+                                    right_m = right_label.swap_upper_n
+                                    right_n = right_label.with_lower_m
                                     if m == right_n and n == right_m:
                                         before_i = new_value[:index]
                                         after_i = new_value[index + 2:]
-                                        new_value = before_i + (((("swap", 0, n + m), n + m, n + m),),) + after_i
+                                        new_value = before_i + (((ODE_DAG_Repository.Swap(0, n + m), n + m, n + m),),) + after_i
                                         break
                     if len(r) == 1 and r[0] is not None:
                         """
@@ -516,8 +480,8 @@ class ODE_DAG_Repository:
                         x
                         """
                         label, i, o = r[0]
-                        if isinstance(label, tuple) and len(label) == 3 and label[0] == "swap":
-                            if label[1] == 0:
+                        if isinstance(label, ODE_DAG_Repository.Swap):
+                            if label.swap_upper_n == 0:
                                 before_i = new_value[:index]
                                 after_i = new_value[index + 2:]
                                 new_value = before_i + (l,) + after_i
@@ -530,19 +494,16 @@ class ODE_DAG_Repository:
                             label_l_2, i_l_2, o_l_2 = left_second
                             label_r_1, i_r_1, o_r_1 = right_first
                             label_r_2, i_r_2, o_r_2 = right_second
-                            if isinstance(label_l_1, tuple) and len(label_l_1) == 3 and label_l_1[0] == "swap":
-                                m = label_l_1[1]
-                                n = label_l_1[2]
-                                if (isinstance(label_l_2, tuple) and len(label_l_2) == 3 and label_l_2[0] == "swap"
-                                        and label_l_2[1] == 0):
-                                    p = label_l_2[2]
-                                    if (isinstance(label_r_1, tuple) and len(label_r_1) == 3 and label_r_1[0] == "swap"
-                                            and label_r_1[1] == 0):
-                                        right_n = label_r_1[2]
-                                        if (isinstance(label_r_2, tuple) and len(label_r_2) == 3 and
-                                                label_r_2[0] == "swap"):
-                                            right_m = label_r_2[1]
-                                            right_p = label_r_2[2]
+                            if isinstance(label_l_1, ODE_DAG_Repository.Swap):
+                                m = label_l_1.swap_upper_n
+                                n = label_l_1.with_lower_m
+                                if (isinstance(label_l_2, ODE_DAG_Repository.Swap) and label_l_2.swap_upper_n == 0):
+                                    p = label_l_2.with_lower_m
+                                    if (isinstance(label_r_1, ODE_DAG_Repository.Swap) and label_r_1.swap_upper_n == 0):
+                                        right_n = label_r_1.with_lower_m
+                                        if isinstance(label_r_2, ODE_DAG_Repository.Swap):
+                                            right_m = label_r_2.swap_upper_n
+                                            right_p = label_r_2.with_lower_m
                                             if m == right_m and n == right_n and p == right_p:
                                                 """
                                                 before(besides(swap(m+n, m, n), copy(p,edge())), besides(copy(n, edge()), swap(m+p, m, p)))
@@ -551,20 +512,18 @@ class ODE_DAG_Repository:
                                                 """
                                                 before_i = new_value[:index]
                                                 after_i = new_value[index + 2:]
-                                                new_value = before_i + (((("swap", m, n + p), m + n + p, m + n + p),),) + after_i
+                                                new_value = before_i + (((ODE_DAG_Repository.Swap(m, n + p), m + n + p, m + n + p),),) + after_i
                                                 break
-                            if (isinstance(label_l_1, tuple) and len(label_l_1) == 3 and label_l_1[0] == "swap" and
-                                    label_l_1[1] == 0):
-                                m = label_l_1[2]
-                                if isinstance(label_l_2, tuple) and len(label_l_2) == 3 and label_l_2[0] == "swap":
-                                    n = label_l_2[1]
-                                    p = label_l_2[2]
-                                    if isinstance(label_r_1, tuple) and len(label_r_1) == 3 and label_r_1[0] == "swap":
-                                        right_m = label_r_1[1]
-                                        right_p = label_r_1[2]
-                                        if (isinstance(label_r_2, tuple) and len(label_r_2) == 3 and
-                                                label_r_2[0] == "swap" and label_r_2[1] == 0):
-                                            right_n = label_r_2[2]
+                            if (isinstance(label_l_1, ODE_DAG_Repository.Swap) and label_l_1.swap_upper_n == 0):
+                                m = label_l_1.with_lower_m
+                                if isinstance(label_l_2, ODE_DAG_Repository.Swap):
+                                    n = label_l_2.swap_upper_n
+                                    p = label_l_2.with_lower_m
+                                    if isinstance(label_r_1, ODE_DAG_Repository.Swap):
+                                        right_m = label_r_1.swap_upper_n
+                                        right_p = label_r_1.with_lower_m
+                                        if (isinstance(label_r_2, ODE_DAG_Repository.Swap) and label_r_2.swap_upper_n == 0):
+                                            right_n = label_r_2.with_lower_m
                                             if m == right_m and n == right_n and p == right_p:
                                                 """
                                                 before(besides(copy(m, edge()), swap(n+p, n, p)), besides(swap(m+p, m, p), copy(n,edge())))
@@ -573,22 +532,22 @@ class ODE_DAG_Repository:
                                                 """
                                                 before_i = new_value[:index]
                                                 after_i = new_value[index + 2:]
-                                                new_value = before_i + (((("swap", m + n, p), m + n + p, m + n + p),),) + after_i
+                                                new_value = before_i + (((ODE_DAG_Repository.Swap(m + n, p), m + n + p, m + n + p),),) + after_i
                                                 break
                 for l, m, r in zip(value[:-2], value[1:-1], value[2:]):
                     if len(l) == 1:
                         left_label, left_i, left_o = l[0]
-                        if isinstance(left_label, tuple) and len(left_label) == 3 and left_label[0] == "swap":
-                            left_m = left_label[1]
-                            left_n = left_label[2]
+                        if isinstance(left_label, ODE_DAG_Repository.Swap):
+                            left_m = left_label.swap_upper_n
+                            left_n = left_label.with_lower_m
                             if len(m) == 2 and len(r) == 1:
                                 mid_first, mid_second = m
                                 right_label, right_i, right_o = r[0]
                                 mid_first_label, mid_n, mid_p = mid_first
                                 mid_second_label, mid_m, mid_q = mid_second
-                                if isinstance(right_label, tuple) and len(right_label) == 3 and right_label[0] == "swap":
-                                    right_p = right_label[1]
-                                    right_q = right_label[2]
+                                if isinstance(right_label, ODE_DAG_Repository.Swap):
+                                    right_p = right_label.swap_upper_n
+                                    right_q = right_label.with_lower_m
                                     if left_m == mid_m and left_n == mid_n and right_p == mid_p and right_q == mid_q:
                                         """
                                         before(swap(m + n, m, n), before(beside(x(n, p), y(m, q)), swap(p + q, p, q)))
@@ -602,6 +561,52 @@ class ODE_DAG_Repository:
                 value = new_value
                 # TODO: How to handel DAG Criteria in normalization?
             return value
+
+    @dataclass(frozen=True)
+    class MSEloss:
+        reduction: str | None = "mean"
+
+    class Loss_Function(Group):
+        name = "Loss_Function"
+
+        def __init__(self):
+            pass
+
+        def __iter__(self):
+            yield ODE_DAG_Repository.MSEloss(reduction="mean")
+            yield ODE_DAG_Repository.MSEloss(reduction="sum")
+            yield ODE_DAG_Repository.MSEloss(reduction="none")
+
+        def __contains__(self, value):
+            return value is None or (isinstance(value, ODE_DAG_Repository.MSEloss) and (value.reduction is None or value.reduction in ["mean", "sum", "none"]))
+
+    @dataclass(frozen=True)
+    class Adam:
+        learning_rate: float | None = 0.001
+        betas: tuple[float, float] | None = (0.9, 0.999)
+        eps: float | None = 1e-08
+        weight_decay: float | None = 0.0
+        amsgrad: bool | None = False
+        maximize: bool | None = False
+        capturable: bool | None = False
+        differentiable: bool | None = False
+        decoupled_weight_decay: bool | None = False
+
+    class Optimizer(Group):
+        name = "Optimizer"
+
+        def __init__(self, learning_rate_values):
+            self.learning_rate_values = learning_rate_values
+
+        def __iter__(self):
+            for lr in self.learning_rate_values:
+                yield ODE_DAG_Repository.Adam(learning_rate=lr)
+
+        def __contains__(self, value):
+            return value is None or (isinstance(value, ODE_DAG_Repository.Adam) and (value.learning_rate is None or value.learning_rate in self.learning_rate_values))
+
+
+
 
     @staticmethod
     def swaplaw1(head: DerivationTree[Any, str, Any], tail: DerivationTree[Any, str, Any]) -> bool:
@@ -626,9 +631,8 @@ class ODE_DAG_Repository:
             left_term_root = left_term.root
             right_head_root = right_head.root
             right_tail_root = right_tail.root
-            if (
-                    left_term_root == "swap") and "beside_cons" in right_head_root and "before_singleton" in right_tail_root:
-                if len(left_term.children) != 19 or len(right_head.children) != 11 or len(right_tail.children) != 6:
+            if (left_term_root == "swap") and "beside_cons" in right_head_root and "before_singleton" in right_tail_root:
+                if len(left_term.children) != 4 or len(right_head.children) != 11 or len(right_tail.children) != 6:
                     raise ValueError("Derivation trees have not the expected shape.")
                 m = left_term.children[1]
                 n = left_term.children[2]
@@ -646,14 +650,14 @@ class ODE_DAG_Repository:
                     right_swap = right_tail_term.children[4]
                     right_swap_root = right_swap.root
                     if right_swap_root == "swap":
-                        if len(right_swap.children) != 19:
+                        if len(right_swap.children) != 4:
                             raise ValueError("Derivation trees have not the expected shape.")
                         p = right_swap.children[1]
                         q = right_swap.children[2]
                         if m == y_m and n == x_n and p == x_p and q == y_q:
                             return False
             elif (left == "swap") and "beside_cons" in right_head_root and "before_cons" in right_tail_root:
-                if len(left_term.children) != 19 or len(right_head.children) != 11 or len(right_tail.children) != 9:
+                if len(left_term.children) != 4 or len(right_head.children) != 11 or len(right_tail.children) != 9:
                     raise ValueError("Derivation trees have not the expected shape.")
                 m = left_term.children[1]
                 n = left_term.children[2]
@@ -671,7 +675,7 @@ class ODE_DAG_Repository:
                     right_swap = right_tail_head.children[4]
                     right_swap_root = right_swap.root
                     if right_swap_root == "swap":
-                        if len(right_swap.children) != 19:
+                        if len(right_swap.children) != 4:
                             raise ValueError("Derivation trees have not the expected shape.")
                         p = right_swap.children[1]
                         q = right_swap.children[2]
@@ -704,28 +708,27 @@ class ODE_DAG_Repository:
             left_tail_root = left_tail.root
             right_term_root = right_term.root
             if (left_swap == "swap") and "beside_singleton" in left_tail_root and "beside_cons" in right_term_root:
-                if len(left_head.children) != 19 or len(left_tail.children) != 5 or len(right_term.children) != 11:
+                if len(left_head.children) != 4 or len(left_tail.children) != 5 or len(right_term.children) != 11:
                     raise ValueError("Derivation trees have not the expected shape.")
                 m = left_head.children[1]
                 n = left_head.children[2]
-                left_tail_term = left_tail.children[4]  # swap(p, 0, p)
-                right_head = right_term.children[9]  # swap(n, 0, n)
+                left_tail_term = left_tail.children[4] # swap(p, 0, p)
+                right_head = right_term.children[9] # swap(n, 0, n)
                 right_tail = right_term.children[10]
 
                 left_tail_swap = left_tail_term.root
                 right_head_root = right_head.root
                 right_tail_root = right_tail.root
                 if left_tail_swap == "edges" and right_head_root == "edges" and "beside_singleton" in right_tail_root:
-                    if len(left_tail_term.children) != 17 or len(right_head.children) != 17 or len(
-                            right_tail.children) != 5:
+                    if len(left_tail_term.children) != 2 or len(right_head.children) != 2 or len(right_tail.children) != 5:
                         raise ValueError("Derivation trees have not the expected shape.")
                     p = left_tail_term.children[0]
                     right_n = right_head.children[0]
 
-                    right_tail_term = right_tail.children[4]  # swap(m+p, m, p)
+                    right_tail_term = right_tail.children[4] # swap(m+p, m, p)
                     right_tail_term_root = right_tail_term.root
                     if (right_tail_term_root == "swap") and n == right_n:
-                        if len(right_tail_term.children) != 19:
+                        if len(right_tail_term.children) != 4:
                             raise ValueError("Derivation trees have not the expected shape.")
                         right_m = right_tail_term.children[1]
                         right_p = right_tail_term.children[2]
@@ -742,7 +745,7 @@ class ODE_DAG_Repository:
             left_tail_root = left_tail.root
             right_term_root = right_term.root
             if (left_swap == "swap") and "beside_singleton" in left_tail_root and "beside_cons" in right_term_root:
-                if len(left_head.children) != 19 or len(left_tail.children) != 5 or len(right_term.children) != 11:
+                if len(left_head.children) != 4 or len(left_tail.children) != 5 or len(right_term.children) != 11:
                     raise ValueError("Derivation trees have not the expected shape.")
                 m = left_head.children[1]
                 n = left_head.children[2]
@@ -754,7 +757,7 @@ class ODE_DAG_Repository:
                 right_head_root = right_head.root
                 right_tail_root = right_tail.root
                 if left_tail_swap == "edges" and right_head_root == "edges" and "beside_singleton" in right_tail_root:
-                    if len(left_tail_term.children) != 17 or len(right_head.children) != 17 or len(
+                    if len(left_tail_term.children) != 2 or len(right_head.children) != 2 or len(
                             right_tail.children) != 5:
                         raise ValueError("Derivation trees have not the expected shape.")
                     p = left_tail_term.children[0]
@@ -763,7 +766,7 @@ class ODE_DAG_Repository:
                     right_tail_term = right_tail.children[4]  # swap(m+p, m, p)
                     right_tail_term_root = right_tail_term.root
                     if right_tail_term_root == "swap" and n == right_n:
-                        if len(right_tail_term.children) != 19:
+                        if len(right_tail_term.children) != 4:
                             raise ValueError("Derivation trees have not the expected shape.")
                         right_m = right_tail_term.children[1]
                         right_p = right_tail_term.children[2]
@@ -789,10 +792,11 @@ class ODE_DAG_Repository:
             left_term = head.children[4]
             right_term = tail.children[5]
 
+
             left_term_root = left_term.root
             right_term_root = right_term.root
             if (left_term_root == "swap") and "beside_singleton" in right_term_root:
-                if len(left_term.children) != 19 or len(right_term.children) != 5:
+                if len(left_term.children) != 4 or len(right_term.children) != 5:
                     raise ValueError("Derivation trees have not the expected shape.")
                 m = left_term.children[1]
                 n = left_term.children[2]
@@ -800,7 +804,7 @@ class ODE_DAG_Repository:
                 right_beside = right_term.children[4]
                 right_beside_root = right_beside.root
                 if right_beside_root == "swap" or right_beside_root == "swap":
-                    if len(right_beside.children) != 19:
+                    if len(right_beside.children) != 4:
                         raise ValueError("Derivation trees have not the expected shape.")
                     right_n = right_beside.children[1]
                     right_m = right_beside.children[2]
@@ -812,10 +816,11 @@ class ODE_DAG_Repository:
             left_term = head.children[4]
             right_term = tail.children[7]
 
+
             left_term_root = left_term.root
             right_term_root = right_term.root
             if (left_term_root == "swap") and "beside_singleton" in right_term_root:
-                if len(left_term.children) != 19 or len(right_term.children) != 5:
+                if len(left_term.children) != 4 or len(right_term.children) != 5:
                     raise ValueError("Derivation trees have not the expected shape.")
                 m = left_term.children[1]
                 n = left_term.children[2]
@@ -854,7 +859,7 @@ class ODE_DAG_Repository:
             left_tail_root = left_tail.root
             right_term_root = right_term.root
             if left_head_root == "edges" and "beside_singleton" in left_tail_root and "beside_cons" in right_term_root:
-                if len(left_head.children) != 17 or len(left_tail.children) != 5 or len(right_term.children) != 11:
+                if len(left_head.children) != 2 or len(left_tail.children) != 5 or len(right_term.children) != 11:
                     raise ValueError("Derivation trees have not the expected shape.")
                 m = left_head.children[0]
 
@@ -866,8 +871,7 @@ class ODE_DAG_Repository:
                 right_head_root = right_head.root
                 right_tail_root = right_tail.root
                 if left_tail_term_root == "swap" and right_head_root == "swap" and "beside_singleton" in right_tail_root:
-                    if len(left_tail_term.children) != 19 or len(right_head.children) != 19 or len(
-                            right_tail.children) != 5:
+                    if len(left_tail_term.children) != 4 or len(right_head.children) != 4 or len(right_tail.children) != 5:
                         raise ValueError("Derivation trees have not the expected shape.")
                     n = left_tail_term.children[1]
                     p = left_tail_term.children[2]
@@ -879,7 +883,7 @@ class ODE_DAG_Repository:
                     right_tail_term_root = right_tail_term.root
 
                     if right_tail_term_root == "edges" and m == right_m and p == right_p:
-                        if len(right_tail_term.children) != 17:
+                        if len(right_tail_term.children) != 2:
                             raise ValueError("Derivation trees have not the expected shape.")
                         right_n = right_tail_term.children[0]
                         if n == right_n:
@@ -896,7 +900,7 @@ class ODE_DAG_Repository:
             left_tail_root = left_tail.root
             right_term_root = right_term.root
             if left_head_root == "edges" and "beside_singleton" in left_tail_root and "beside_cons" in right_term_root:
-                if len(left_head.children) != 17 or len(left_tail.children) != 5 or len(right_term.children) != 11:
+                if len(left_head.children) != 2 or len(left_tail.children) != 5 or len(right_term.children) != 11:
                     raise ValueError("Derivation trees have not the expected shape.")
                 m = left_head.children[0]
 
@@ -908,7 +912,7 @@ class ODE_DAG_Repository:
                 right_head_root = right_head.root
                 right_tail_root = right_tail.root
                 if left_tail_term_root == "swap" and right_head_root == "swap" and "beside_singleton" in right_tail_root:
-                    if len(left_tail_term.children) != 19 or len(right_head.children) != 19 or len(
+                    if len(left_tail_term.children) != 4 or len(right_head.children) != 4 or len(
                             right_tail.children) != 5:
                         raise ValueError("Derivation trees have not the expected shape.")
                     n = left_tail_term.children[1]
@@ -921,7 +925,7 @@ class ODE_DAG_Repository:
                     right_tail_term_root = right_tail_term.root
 
                     if right_tail_term_root == "edges" and m == right_m and p == right_p:
-                        if len(right_tail_term.children) != 17:
+                        if len(right_tail_term.children) != 2:
                             raise ValueError("Derivation trees have not the expected shape.")
                         right_n = right_tail_term.children[0]
                         if n == right_n:
@@ -937,19 +941,22 @@ class ODE_DAG_Repository:
         edgeset = set(edgelist)
         return len(edgelist) == len(edgeset)
 
-    # TODO: add constraints for edges between linear layers
 
     def specification(self):
-        labels = self.Label(self.dimensions, self.linear_feature_dimensions,
-                            self.sharpness_values, self.threshold_values)
+        labels = self.Label(self.dimensions, self.linear_feature_dimensions, self.sharpness_values, self.threshold_values)
         para_labels = self.Para(labels, self.dimensions)
-        #print("linear" in para_labels)
         paratuples = self.ParaTuples(para_labels, max_length=max(self.dimensions))
         paratupletuples = self.ParaTupleTuples(paratuples)
         dimension = DataGroup("dimension", self.dimensions)
         dimension_with_None = DataGroup("dimension_with_None", list(self.dimensions) + [None])
-        loss_function = self.Loss_Function()
-        optimizer = self.Optimizer(self.learning_rate_values)
+        linear_feature_dimension = DataGroup("linear_feature_dimension", self.linear_feature_dimensions)
+        sharpness_values = DataGroup("sharpness_values", self.sharpness_values)
+        threshold_values = DataGroup("threshold_values", self.threshold_values)
+        bool = DataGroup("bool", [True, False])
+        learning_rate = DataGroup("learning_rate", self.learning_rate_values)
+        loss_function = ODE_DAG_Repository.Loss_Function()
+        adam_learning_rate = DataGroup("adam_learning_rate", self.adam_learning_rate_values)
+        optimizer = ODE_DAG_Repository.Optimizer(self.adam_learning_rate_values)
         epochs = DataGroup("epochs", self.n_epoch_values)
 
         return {
@@ -965,42 +972,28 @@ class ODE_DAG_Repository:
             # (m parallel) edges are swaps with n=0
             "edges": SpecificationBuilder()
             .parameter("io", dimension)
-            .parameter("para1", para_labels, lambda v: [(("swap", 0, v["io"]), v["io"], v["io"])])
-            .parameter("para2", para_labels, lambda v: [(("swap", 0, None), v["io"], v["io"])])
-            .parameter("para3", para_labels, lambda v: [(("swap", None, v["io"]), v["io"], v["io"])])
-            .parameter("para4", para_labels, lambda v: [(("swap", None, None), v["io"], v["io"])])
-            .parameter("para5", para_labels, lambda v: [(("swap", 0, v["io"]), v["io"], None)])
-            .parameter("para6", para_labels, lambda v: [(("swap", 0, None), v["io"], None)])
-            .parameter("para7", para_labels, lambda v: [(("swap", None, v["io"]), v["io"], None)])
-            .parameter("para8", para_labels, lambda v: [(("swap", None, None), v["io"], None)])
-            .parameter("para9", para_labels, lambda v: [(("swap", 0, v["io"]), None, v["io"])])
-            .parameter("para10", para_labels, lambda v: [(("swap", 0, None), None, v["io"])])
-            .parameter("para11", para_labels, lambda v: [(("swap", None, v["io"]), None, v["io"])])
-            .parameter("para12", para_labels, lambda v: [(("swap", None, None), None, v["io"])])
-            .parameter("para13", para_labels, lambda v: [(("swap", 0, v["io"]), None, None)])
-            .parameter("para14", para_labels, lambda v: [(("swap", 0, None), None, None)])
-            .parameter("para15", para_labels, lambda v: [(("swap", None, v["io"]), None, None)])
-            .parameter("para16", para_labels, lambda v: [(("swap", None, None), None, None)])
-            .suffix(Constructor("DAG_component", Constructor("input", Var("io"))
+            .parameter("para", para_labels, lambda v: [(self.Swap(0, v["io"]), v["io"], v["io"]),
+                                                       (self.Swap(0, None), v["io"], v["io"]),
+                                                       (self.Swap(None, v["io"]), v["io"], v["io"]),
+                                                       (self.Swap(None, None), v["io"], v["io"]),
+                                                       (self.Swap(0, v["io"]), v["io"], None),
+                                                       (self.Swap(0, None), v["io"], None),
+                                                       (self.Swap(None, v["io"]), v["io"], None),
+                                                       (self.Swap(None, None), v["io"], None),
+                                                       (self.Swap(0, v["io"]), None, v["io"]),
+                                                       (self.Swap(0, None), None, v["io"]),
+                                                       (self.Swap(None, v["io"]), None, v["io"]),
+                                                       (self.Swap(None, None), None, v["io"]),
+                                                       (self.Swap(0, v["io"]), None, None),
+                                                       (self.Swap(0, None), None, None),
+                                                       (self.Swap(None, v["io"]), None, None),
+                                                       (self.Swap(None, None), None, None), None])
+                                                        # (None, None, None)])
+            .suffix(Constructor("Model_component", Constructor("input", Var("io"))
                                 & Constructor("input", Literal(None))
                                 & Constructor("output", Var("io"))
                                 & Constructor("output", Literal(None))
-                                & Constructor("structure", Var("para1"))
-                                & Constructor("structure", Var("para2"))
-                                & Constructor("structure", Var("para3"))
-                                & Constructor("structure", Var("para4"))
-                                & Constructor("structure", Var("para5"))
-                                & Constructor("structure", Var("para6"))
-                                & Constructor("structure", Var("para7"))
-                                & Constructor("structure", Var("para8"))
-                                & Constructor("structure", Var("para9"))
-                                & Constructor("structure", Var("para10"))
-                                & Constructor("structure", Var("para11"))
-                                & Constructor("structure", Var("para12"))
-                                & Constructor("structure", Var("para13"))
-                                & Constructor("structure", Var("para14"))
-                                & Constructor("structure", Var("para15"))
-                                & Constructor("structure", Var("para16"))
+                                & Constructor("structure", Var("para"))
                                 & Constructor("structure", Literal(None))
                                 ) & Constructor("ID")
                     ),
@@ -1009,242 +1002,138 @@ class ODE_DAG_Repository:
             .parameter("io", dimension)
             .parameter("n", dimension, lambda v: range(1, v["io"]))
             .parameter("m", dimension, lambda v: [v["io"] - v["n"]]) # m > 0
-            .parameter("para1", para_labels, lambda v: [(("swap", v["n"], v["m"]), v["io"], v["io"])])
-            .parameter("para2", para_labels, lambda v: [(("swap", v["n"], None), v["io"], v["io"])])
-            .parameter("para3", para_labels, lambda v: [(("swap", None, v["m"]), v["io"], v["io"])])
-            .parameter("para4", para_labels, lambda v: [(("swap", None, None), v["io"], v["io"])])
-            .parameter("para5", para_labels, lambda v: [(("swap", v["n"], v["m"]), v["io"], None)])
-            .parameter("para6", para_labels, lambda v: [(("swap", v["n"], None), v["io"], None)])
-            .parameter("para7", para_labels, lambda v: [(("swap", None, v["m"]), v["io"], None)])
-            .parameter("para8", para_labels, lambda v: [(("swap", None, None), v["io"], None)])
-            .parameter("para9", para_labels, lambda v: [(("swap", v["n"], v["m"]), None, v["io"])])
-            .parameter("para10", para_labels, lambda v: [(("swap", v["n"], None), None, v["io"])])
-            .parameter("para11", para_labels, lambda v: [(("swap", None, v["m"]), None, v["io"])])
-            .parameter("para12", para_labels, lambda v: [(("swap", None, None), None, v["io"])])
-            .parameter("para13", para_labels, lambda v: [(("swap", v["n"], v["m"]), None, None)])
-            .parameter("para14", para_labels, lambda v: [(("swap", v["n"], None), None, None)])
-            .parameter("para15", para_labels, lambda v: [(("swap", None, v["m"]), None, None)])
-            .parameter("para16", para_labels, lambda v: [(("swap", None, None), None, None)])
-            .suffix(Constructor("DAG_component", Constructor("input", Var("io"))
+            .parameter("para", para_labels, lambda v: [(self.Swap(v["n"], v["m"]), v["io"], v["io"]),
+                                                       (self.Swap(v["n"], None), v["io"], v["io"]),
+                                                       (self.Swap(None, v["m"]), v["io"], v["io"]),
+                                                       (self.Swap(None, None), v["io"], v["io"]),
+                                                       (self.Swap(v["n"], v["m"]), v["io"], None),
+                                                       (self.Swap(v["n"], None), v["io"], None),
+                                                       (self.Swap(None, v["m"]), v["io"], None),
+                                                       (self.Swap(None, None), v["io"], None),
+                                                       (self.Swap(v["n"], v["m"]), None, v["io"]),
+                                                       (self.Swap(v["n"], None), None, v["io"]),
+                                                       (self.Swap(None, v["m"]), None, v["io"]),
+                                                       (self.Swap(None, None), None, v["io"]),
+                                                       (self.Swap(v["n"], v["m"]), None, None),
+                                                       (self.Swap(v["n"], None), None, None),
+                                                       (self.Swap(None, v["m"]), None, None),
+                                                       (self.Swap(None, None), None, None), None])
+                                                       #(None, None, None)])
+            .suffix(Constructor("Model_component", Constructor("input", Var("io"))
                                 & Constructor("input", Literal(None))
                                 & Constructor("output", Var("io"))
                                 & Constructor("output", Literal(None))
-                                & Constructor("structure", Var("para1"))
-                                & Constructor("structure", Var("para2"))
-                                & Constructor("structure", Var("para3"))
-                                & Constructor("structure", Var("para4"))
-                                & Constructor("structure", Var("para5"))
-                                & Constructor("structure", Var("para6"))
-                                & Constructor("structure", Var("para7"))
-                                & Constructor("structure", Var("para8"))
-                                & Constructor("structure", Var("para9"))
-                                & Constructor("structure", Var("para10"))
-                                & Constructor("structure", Var("para11"))
-                                & Constructor("structure", Var("para12"))
-                                & Constructor("structure", Var("para13"))
-                                & Constructor("structure", Var("para14"))
-                                & Constructor("structure", Var("para15"))
-                                & Constructor("structure", Var("para16"))
+                                & Constructor("structure", Var("para"))
                                 & Constructor("structure", Literal(None))
                                 ) & Constructor("non_ID")
                     ),
 
-            "linear_layer": SpecificationBuilder()
-            .parameter("l", labels, lambda v: list(labels.iter_linear()))
-            .parameter("i", dimension, lambda v: [1])
+            "linear": SpecificationBuilder()
+            .parameter("in_f", linear_feature_dimension)
+            .parameter("out_f", linear_feature_dimension)
+            .parameter("bias", bool)
+            .parameter("i", dimension)
             .parameter("o", dimension)
-            .parameter("para1", para_labels, lambda v: [(v["l"], v["i"], v["o"])])
-            .parameter("para2", para_labels, lambda v: [(v["l"], v["i"], None)])
-            .parameter("para3", para_labels, lambda v: [(v["l"], None, v["o"])])
-            .parameter("para4", para_labels, lambda v: [(None, v["i"], v["o"])])
-            .parameter("para5", para_labels, lambda v: [(v["l"], None, None)])
-            .parameter("para6", para_labels, lambda v: [(None, None, v["o"])])
-            .parameter("para7", para_labels, lambda v: [(None, v["i"], None)])
-            .suffix(Constructor("DAG_component",
+            .parameter("para", para_labels, lambda v: [(self.Linear(in_f, out_f, bias), i, o)
+                                                       for in_f in [v["in_f"], None]
+                                                       for out_f in [v["out_f"], None]
+                                                       for bias in [v["bias"], None]
+                                                       for i in [v["i"], None]
+                                                       for o in [v["o"], None]] + [None])
+            .suffix(Constructor("Model_component",
                                 Constructor("input", Var("i"))
                                 & Constructor("input", Literal(None))
                                 & Constructor("output", Var("o"))
                                 & Constructor("output", Literal(None))
-                                & Constructor("structure", Var("para1"))
-                                & Constructor("structure", Var("para2"))
-                                & Constructor("structure", Var("para3"))
-                                & Constructor("structure", Var("para4"))
-                                & Constructor("structure", Var("para5"))
-                                & Constructor("structure", Var("para6"))
-                                & Constructor("structure", Var("para7"))
-                                #& Constructor("structure", Literal("linear"))
+                                & Constructor("structure", Var("para"))
                                 & Constructor("structure", Literal(None))
                                 ) & Constructor("non_ID")
                     ),
 
             "sigmoid": SpecificationBuilder()
-            .parameter("l", labels, lambda v: list(labels.iter_sigmoid()))
-            .parameter("i", dimension, lambda v: [1])
+            .parameter("i", dimension)
             .parameter("o", dimension)
-            .parameter("para1", para_labels, lambda v: [(v["l"], v["i"], v["o"])])
-            .parameter("para2", para_labels, lambda v: [(v["l"], v["i"], None)])
-            .parameter("para3", para_labels, lambda v: [(v["l"], None, v["o"])])
-            .parameter("para4", para_labels, lambda v: [(None, v["i"], v["o"])])
-            .parameter("para5", para_labels, lambda v: [(v["l"], None, None)])
-            .parameter("para6", para_labels, lambda v: [(None, None, v["o"])])
-            .parameter("para7", para_labels, lambda v: [(None, v["i"], None)])
-            .suffix(Constructor("DAG_component",
+            .parameter("para", para_labels, lambda v: [(self.Sigmoid(), v["i"], v["o"]), None])
+            .suffix(Constructor("Model_component",
                                 Constructor("input", Var("i"))
                                 & Constructor("input", Literal(None))
                                 & Constructor("output", Var("o"))
                                 & Constructor("output", Literal(None))
-                                & Constructor("structure", Var("para1"))
-                                & Constructor("structure", Var("para2"))
-                                & Constructor("structure", Var("para3"))
-                                & Constructor("structure", Var("para4"))
-                                & Constructor("structure", Var("para5"))
-                                & Constructor("structure", Var("para6"))
-                                & Constructor("structure", Var("para7"))
-                                #& Constructor("structure", Literal("sigmoid"))
-                                & Constructor("structure", Literal(None))
-                                ) & Constructor("non_ID")
-                    ),
-
-            "relu": SpecificationBuilder()
-            .parameter("l", labels, lambda v: list(labels.iter_relu()))
-            .parameter("i", dimension, lambda v: [1])
-            .parameter("o", dimension)
-            .parameter("para1", para_labels, lambda v: [(v["l"], v["i"], v["o"])])
-            .parameter("para2", para_labels, lambda v: [(v["l"], v["i"], None)])
-            .parameter("para3", para_labels, lambda v: [(v["l"], None, v["o"])])
-            .parameter("para4", para_labels, lambda v: [(None, v["i"], v["o"])])
-            .parameter("para5", para_labels, lambda v: [(v["l"], None, None)])
-            .parameter("para6", para_labels, lambda v: [(None, None, v["o"])])
-            .parameter("para7", para_labels, lambda v: [(None, v["i"], None)])
-            .suffix(Constructor("DAG_component",
-                                Constructor("input", Var("i"))
-                                & Constructor("input", Literal(None))
-                                & Constructor("output", Var("o"))
-                                & Constructor("output", Literal(None))
-                                & Constructor("structure", Var("para1"))
-                                & Constructor("structure", Var("para2"))
-                                & Constructor("structure", Var("para3"))
-                                & Constructor("structure", Var("para4"))
-                                & Constructor("structure", Var("para5"))
-                                & Constructor("structure", Var("para6"))
-                                & Constructor("structure", Var("para7"))
-                                #& Constructor("structure", Literal("relu"))
+                                & Constructor("structure", Var("para"))
                                 & Constructor("structure", Literal(None))
                                 ) & Constructor("non_ID")
                     ),
 
             "sharpness_sigmoid": SpecificationBuilder()
-            .parameter("l", labels, lambda v: list(labels.iter_sharpness_sigmoid()))
-            .parameter("i", dimension, lambda v: [1])
+            .parameter("sharpness", sharpness_values)
+            .parameter("i", dimension)
             .parameter("o", dimension)
-            .parameter("para1", para_labels, lambda v: [(v["l"], v["i"], v["o"])])
-            .parameter("para2", para_labels, lambda v: [(v["l"], v["i"], None)])
-            .parameter("para3", para_labels, lambda v: [(v["l"], None, v["o"])])
-            .parameter("para4", para_labels, lambda v: [(None, v["i"], v["o"])])
-            .parameter("para5", para_labels, lambda v: [(v["l"], None, None)])
-            .parameter("para6", para_labels, lambda v: [(None, None, v["o"])])
-            .parameter("para7", para_labels, lambda v: [(None, v["i"], None)])
-            .suffix(Constructor("DAG_component",
+            .parameter("para", para_labels, lambda v: [(self.Sharpness_Sigmoid(sharpness), i, o)
+                                                       for sharpness in [v["sharpness"], None]
+                                                       for i in [v["i"], None]
+                                                       for o in [v["o"], None]] + [None])
+            .suffix(Constructor("Model_component",
                                 Constructor("input", Var("i"))
                                 & Constructor("input", Literal(None))
                                 & Constructor("output", Var("o"))
                                 & Constructor("output", Literal(None))
-                                & Constructor("structure", Var("para1"))
-                                & Constructor("structure", Var("para2"))
-                                & Constructor("structure", Var("para3"))
-                                & Constructor("structure", Var("para4"))
-                                & Constructor("structure", Var("para5"))
-                                & Constructor("structure", Var("para6"))
-                                & Constructor("structure", Var("para7"))
-                                #& Constructor("structure", Literal("sharpness_sigmoid"))
+                                & Constructor("structure", Var("para"))
+                                & Constructor("structure", Literal(None))
+                                ) & Constructor("non_ID")
+                    ),
+
+            "relu": SpecificationBuilder()
+            .parameter("inplace", bool)
+            .parameter("i", dimension)
+            .parameter("o", dimension)
+            .parameter("para", para_labels, lambda v: [(self.ReLu(b), i, o)
+                                                       for b in [v["inplace"], None]
+                                                       for i in [v["i"], None]
+                                                       for o in [v["o"], None]] + [None])
+            .suffix(Constructor("Model_component",
+                                Constructor("input", Var("i"))
+                                & Constructor("input", Literal(None))
+                                & Constructor("output", Var("o"))
+                                & Constructor("output", Literal(None))
+                                & Constructor("structure", Var("para"))
                                 & Constructor("structure", Literal(None))
                                 ) & Constructor("non_ID")
                     ),
 
             "lte": SpecificationBuilder()
-            .parameter("l", labels, lambda v: list(labels.iter_lte()))
-            .parameter("i", dimension, lambda v: [1])
-            .parameter("o", dimension)
-            .parameter("para1", para_labels, lambda v: [(v["l"], v["i"], v["o"])])
-            .parameter("para2", para_labels, lambda v: [(v["l"], v["i"], None)])
-            .parameter("para3", para_labels, lambda v: [(v["l"], None, v["o"])])
-            .parameter("para4", para_labels, lambda v: [(None, v["i"], v["o"])])
-            .parameter("para5", para_labels, lambda v: [(v["l"], None, None)])
-            .parameter("para6", para_labels, lambda v: [(None, None, v["o"])])
-            .parameter("para7", para_labels, lambda v: [(None, v["i"], None)])
-            .suffix(Constructor("DAG_component",
-                                Constructor("input", Var("i"))
-                                & Constructor("input", Literal(None))
-                                & Constructor("output", Var("o"))
-                                & Constructor("output", Literal(None))
-                                & Constructor("structure", Var("para1"))
-                                & Constructor("structure", Var("para2"))
-                                & Constructor("structure", Var("para3"))
-                                & Constructor("structure", Var("para4"))
-                                & Constructor("structure", Var("para5"))
-                                & Constructor("structure", Var("para6"))
-                                & Constructor("structure", Var("para7"))
-                                #& Constructor("structure", Literal("lte"))
-                                & Constructor("structure", Literal(None))
-                                ) & Constructor("non_ID")
-                    ),
-
-            "sum": SpecificationBuilder()
-            .parameter("l", labels, lambda v: list(labels.iter_sum()))
+            .parameter("threshold", threshold_values)
             .parameter("i", dimension)
             .parameter("o", dimension)
-            .parameter("para1", para_labels, lambda v: [(v["l"], v["i"], v["o"])])
-            .parameter("para2", para_labels, lambda v: [(v["l"], v["i"], None)])
-            .parameter("para3", para_labels, lambda v: [(v["l"], None, v["o"])])
-            .parameter("para4", para_labels, lambda v: [(None, v["i"], v["o"])])
-            .parameter("para5", para_labels, lambda v: [(v["l"], None, None)])
-            .parameter("para6", para_labels, lambda v: [(None, None, v["o"])])
-            .parameter("para7", para_labels, lambda v: [(None, v["i"], None)])
-            .suffix(Constructor("DAG_component",
+            .parameter("para", para_labels, lambda v: [(self.lte(t), i, o)
+                                                       for t in [v["threshold"], None]
+                                                       for i in [v["i"], None]
+                                                       for o in [v["o"], None]] + [None])
+            .suffix(Constructor("Model_component",
                                 Constructor("input", Var("i"))
                                 & Constructor("input", Literal(None))
                                 & Constructor("output", Var("o"))
                                 & Constructor("output", Literal(None))
-                                & Constructor("structure", Var("para1"))
-                                & Constructor("structure", Var("para2"))
-                                & Constructor("structure", Var("para3"))
-                                & Constructor("structure", Var("para4"))
-                                & Constructor("structure", Var("para5"))
-                                & Constructor("structure", Var("para6"))
-                                & Constructor("structure", Var("para7"))
-                                #& Constructor("structure", Literal("sum"))
+                                & Constructor("structure", Var("para"))
                                 & Constructor("structure", Literal(None))
                                 ) & Constructor("non_ID")
                     ),
 
-            "product": SpecificationBuilder()
-            .parameter("l", labels, lambda v: list(labels.iter_product()))
+            "join": SpecificationBuilder()
             .parameter("i", dimension)
+            .parameter_constraint(lambda v: v["i"] > 1)
             .parameter("o", dimension)
-            .parameter("para1", para_labels, lambda v: [(v["l"], v["i"], v["o"])])
-            .parameter("para2", para_labels, lambda v: [(v["l"], v["i"], None)])
-            .parameter("para3", para_labels, lambda v: [(v["l"], None, v["o"])])
-            .parameter("para4", para_labels, lambda v: [(None, v["i"], v["o"])])
-            .parameter("para5", para_labels, lambda v: [(v["l"], None, None)])
-            .parameter("para6", para_labels, lambda v: [(None, None, v["o"])])
-            .parameter("para7", para_labels, lambda v: [(None, v["i"], None)])
-            .suffix(Constructor("DAG_component",
+            .parameter("para", para_labels, lambda v: [(self.Join(), v["i"], v["o"]), None])
+            .suffix(Constructor("Model_component",
                                 Constructor("input", Var("i"))
                                 & Constructor("input", Literal(None))
                                 & Constructor("output", Var("o"))
                                 & Constructor("output", Literal(None))
-                                & Constructor("structure", Var("para1"))
-                                & Constructor("structure", Var("para2"))
-                                & Constructor("structure", Var("para3"))
-                                & Constructor("structure", Var("para4"))
-                                & Constructor("structure", Var("para5"))
-                                & Constructor("structure", Var("para6"))
-                                & Constructor("structure", Var("para7"))
-                                #& Constructor("structure", Literal("product"))
+                                & Constructor("structure", Var("para"))
                                 & Constructor("structure", Literal(None))
                                 ) & Constructor("non_ID")
                     ),
 
+            #'''
             "beside_singleton": SpecificationBuilder()
             .parameter("i", dimension)
             .parameter("o", dimension)
@@ -1256,14 +1145,14 @@ class ODE_DAG_Repository:
                                              (v["para"][2] == v["o"] if v["para"][2] is not None else True)
                                              ) if v["para"] is not None else True)
             .suffix(
-                ((Constructor("DAG_component",
+                ((Constructor("Model_component",
                                        Constructor("input", Var("i"))
                                        & Constructor("output", Var("o"))
                                        & Constructor("structure", Var("para")))
                      & Constructor("non_ID")
                   )
                  **
-                 (Constructor("DAG_parallel",
+                 (Constructor("Model_parallel",
                                 Constructor("input", Var("i"))
                                 & Constructor("input", Literal(None))
                                 & Constructor("output", Var("o"))
@@ -1275,14 +1164,14 @@ class ODE_DAG_Repository:
                   )
                  )
                 &
-                ((Constructor("DAG_component",
+                ((Constructor("Model_component",
                                        Constructor("input", Var("i"))
                                        & Constructor("output", Var("o"))
                                        & Constructor("structure", Var("para")))
                      & Constructor("ID")
                      )
                  **
-                 (Constructor("DAG_parallel",
+                 (Constructor("Model_parallel",
                                 Constructor("input", Var("i"))
                                 & Constructor("input", Literal(None))
                                 & Constructor("output", Var("o"))
@@ -1309,19 +1198,19 @@ class ODE_DAG_Repository:
                                                                   (v["head"][2] == v["o1"] or v["head"][2] is None)))
             .parameter("tail", paratuples, lambda v: [v["ls"][1:]])
             .suffix(
-                    ((Constructor("DAG_component",
+                    ((Constructor("Model_component",
                                        Constructor("input", Var("i1"))
                                        & Constructor("output", Var("o1"))
                                        & Constructor("structure", Var("head")))
                       & Constructor("ID"))
                     **
-                    (Constructor("DAG_parallel",
+                    (Constructor("Model_parallel",
                                        Constructor("input", Var("i2"))
                                        & Constructor("output", Var("o2"))
                                        & Constructor("structure", Var("tail")))
                      & Constructor("non_ID") & Constructor("last", Constructor("non_ID")))
                      **
-                     (Constructor("DAG_parallel",
+                     (Constructor("Model_parallel",
                                 Constructor("input", Var("i"))
                                 & Constructor("input", Literal(None))
                                 & Constructor("output", Var("o"))
@@ -1332,19 +1221,19 @@ class ODE_DAG_Repository:
                       & Constructor("non_ID") & Constructor("last", Constructor("ID")))
                      )
                     &
-                    ((Constructor("DAG_component",
+                    ((Constructor("Model_component",
                                   Constructor("input", Var("i1"))
                                   & Constructor("output", Var("o1"))
                                   & Constructor("structure", Var("head")))
                       & Constructor("non_ID"))
                      **
-                     (Constructor("DAG_parallel",
+                     (Constructor("Model_parallel",
                                   Constructor("input", Var("i2"))
                                   & Constructor("output", Var("o2"))
                                   & Constructor("structure", Var("tail")))
                       & Constructor("ID"))
                      **
-                     (Constructor("DAG_parallel",
+                     (Constructor("Model_parallel",
                                   Constructor("input", Var("i"))
                                   & Constructor("input", Literal(None))
                                   & Constructor("output", Var("o"))
@@ -1355,19 +1244,19 @@ class ODE_DAG_Repository:
                       & Constructor("non_ID") & Constructor("last", Constructor("non_ID")))
                      )
                     &
-                    ((Constructor("DAG_component",
+                    ((Constructor("Model_component",
                                   Constructor("input", Var("i1"))
                                   & Constructor("output", Var("o1"))
                                   & Constructor("structure", Var("head")))
                       & Constructor("non_ID"))
                      **
-                     (Constructor("DAG_parallel",
+                     (Constructor("Model_parallel",
                                   Constructor("input", Var("i2"))
                                   & Constructor("output", Var("o2"))
                                   & Constructor("structure", Var("tail")))
                       & Constructor("non_ID"))
                      **
-                     (Constructor("DAG_parallel",
+                     (Constructor("Model_parallel",
                                   Constructor("input", Var("i"))
                                   & Constructor("input", Literal(None))
                                   & Constructor("output", Var("o"))
@@ -1379,7 +1268,6 @@ class ODE_DAG_Repository:
                      )
                     ),
 
-            # normalization is already done at learner combinator and may be removed here, but this would require refactoring of term predicates...
             "before_singleton": SpecificationBuilder()
             .parameter("i", dimension)
             .parameter("o", dimension)
@@ -1407,19 +1295,18 @@ class ODE_DAG_Repository:
                                                                            and t[2] is not None]))
                                             )
                                   )
-            .argument("x", Constructor("DAG_parallel",
+            .argument("x", Constructor("Model_parallel",
                                        Constructor("input", Var("i"))
                                        & Constructor("output", Var("o"))
                                        & Constructor("structure", Var("ls1"))) & Constructor("non_ID"))
-            .suffix(Constructor("DAG",
+            .suffix(Constructor("Model",
                                 Constructor("input", Var("i"))
                                 & Constructor("input", Literal(None))
                                 & Constructor("output", Var("o"))
                                 & Constructor("output", Literal(None))
                                 & Constructor("structure", Var("request"))
                                 )),
-
-            # normalization is already done at learner combinator and may be removed here, but this would require refactoring of term predicates...
+            # TODO: add constraint for sequential composition of linear layers
             "before_cons": SpecificationBuilder()
             .parameter("i", dimension)
             .parameter("j", dimension)
@@ -1468,11 +1355,11 @@ class ODE_DAG_Repository:
                                                     )
                                             )
                                   )
-            .argument("x", Constructor("DAG_parallel",
+            .argument("x", Constructor("Model_parallel",
                                        Constructor("input", Var("i"))
                                        & Constructor("output", Var("j"))
                                        & Constructor("structure", Var("head"))) & Constructor("non_ID"))
-            .argument("y", Constructor("DAG",
+            .argument("y", Constructor("Model",
                                        Constructor("input", Var("j"))
                                        & Constructor("output", Var("o"))
                                        & Constructor("structure", Var("tail"))))
@@ -1481,7 +1368,7 @@ class ODE_DAG_Repository:
             .constraint(lambda v: self.swaplaw3(v["x"], v["y"]))
             .constraint(lambda v: self.swaplaw4(v["x"], v["y"]))
             .constraint(lambda v: self.dag_constraint(v["x"], v["y"], v["i"])) # DAG: At most one edge between any two nodes
-            .suffix(Constructor("DAG",
+            .suffix(Constructor("Model",
                                 Constructor("input", Var("i"))
                                 & Constructor("input", Literal(None))
                                 & Constructor("output", Var("o"))
@@ -1489,34 +1376,36 @@ class ODE_DAG_Repository:
                                 & Constructor("structure", Var("request")))),
 
             "mse_loss": SpecificationBuilder()
-            .parameter("loss", loss_function)
+            .parameter("loss", loss_function, lambda v: [self.MSEloss()])
             .suffix(Constructor("Loss", Constructor("type", Var("loss")))),
 
             "adam_optimizer": SpecificationBuilder()
-            .parameter("optimizer", optimizer)
+            .parameter("learning_rate", adam_learning_rate)
+            .parameter("optimizer", optimizer, lambda v: [self.Adam(v["learning_rate"])])
             .suffix(Constructor("Optimizer", Constructor("type", Var("optimizer")))),
 
             "learner": SpecificationBuilder()
             .parameter("i", dimension_with_None)
             .parameter("o", dimension_with_None)
             .parameter("request", paratupletuples)
-            .parameter("ls", paratupletuples, lambda v: [paratupletuples.normalize(v["request"])])
             .parameter("epochs", epochs)
-            .parameter("loss", loss_function)
-            .parameter("opti", optimizer)
+            .parameter("learning_rate", learning_rate)
+            .parameter("loss", loss_function, lambda v: [self.MSEloss()])
+            .parameter("opti", optimizer, lambda v: [self.Adam(v["learning_rate"])])
             .argument("loss_f", Constructor("Loss", Constructor("type", Var("loss"))))
             .argument("optimizer", Constructor("Optimizer", Constructor("type", Var("opti"))))
-            .argument("model", Constructor("DAG",
+            .argument("model", Constructor("Model",
                                            Constructor("input", Var("i"))
                                            & Constructor("output", Var("o"))
-                                           & Constructor("structure", Var("ls"))))
-            .suffix(Constructor("Learner", Constructor("DAG",
+                                           & Constructor("structure", Var("request"))))
+            .suffix(Constructor("Learner", Constructor("Model",
                                                        Constructor("input", Var("i"))
                                                        & Constructor("output", Var("o"))
                                                        & Constructor("structure", Var("request"))
                                                        )
                                 & Constructor("Loss", Constructor("type", Var("loss")))
                                 & Constructor("Optimizer", Constructor("type", Var("opti")))
+                                & Constructor("learning_rate", Var("learning_rate"))
                                 & Constructor("epochs", Var("epochs"))
                                 )
                     )
@@ -1526,23 +1415,21 @@ class ODE_DAG_Repository:
 
     def pretty_term_algebra(self):
         return {
-            "edges": (lambda io, para1, para2, para3, para4, para5, para6, para7, para8, para9, para10, para11, para12, para13, para14, para15, para16: f"edges({io})"),
+            "edges": (lambda io, para: f"edges({io})"),
 
-            "swap": (lambda io, n, m, para1, para2, para3, para4, para5, para6, para7, para8, para9, para10, para11, para12, para13, para14, para15, para16: f"swap({io}, {n}, {m})"),
+            "swap": (lambda io, n, m, para: f"swap({io}, {n}, {m})"),
 
-            "linear_layer": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: f"({str(l)}, {i}, {o})"),
+            "linear": (lambda in_f, out_f, bias, i, o, para: str(para)),
 
-            "sigmoid": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: f"({str(l)}, {i}, {o})"),
+            "sigmoid": (lambda i, o, para: str(para)),
 
-            "relu": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: f"({str(l)}, {i}, {o})"),
+            "sharpness_sigmoid": (lambda s, i, o, para: str(para)),
 
-            "sharpness_sigmoid": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: f"({str(l)}, {i}, {o})"),
+            "relu": (lambda inplace, i, o, para: str(para)),
 
-            "lte": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: f"({str(l)}, {i}, {o})"),
+            "lte": (lambda t, i, o, para: str(para)),
 
-            "sum": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: f"({str(l)}, {i}, {o})"),
-
-            "product": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: f"({str(l)}, {i}, {o})"),
+            "join": (lambda i, o, para: str(para)),
 
             "beside_singleton": (lambda i, o, ls, para, x: f"{x})"),
 
@@ -1554,54 +1441,42 @@ class ODE_DAG_Repository:
 
             "mse_loss": (lambda l: str(l)),
 
-            "adam_optimizer": (lambda o: str(o)),
+            "adam_optimizer": (lambda lr, o: str(o)),
 
-            "learner": (lambda i, o, r, ls, e, l, opt, loss, optimizer, model: f"""
+            "learner": (lambda i, o, r, e, lr, l, opt, loss, optimizer, model: f"""
 Learner(
     model= (
         {model}
         ), 
     loss= {loss}, 
     optimizer= {optimizer}, 
+    learning_rate= {lr}, 
     epochs= {e}
     )
-""")
+"""),
         }
 
+    # algebra for DAG-criteria and plotting
+    # TODO: update to relabeling nodes with their combinator names
     def edgelist_algebra(self):
         return {
-            "edges": (lambda io, para1, para2, para3, para4, para5, para6, para7, para8, para9, para10, para11, para12, para13, para14, para15, para16: lambda id, inputs: ([], inputs, {})),
+            "edges": (lambda io, para: lambda id, inputs: ([], inputs, {})),
 
-            "swap": (lambda io, n, m, para1, para2, para3, para4, para5, para6, para7, para8, para9, para10, para11, para12, para13, para14, para15, para16: lambda id, inputs: ([], inputs[n:] + inputs[:n], {})),
+            "swap": (lambda io, n, m, para: lambda id, inputs: ([], inputs[n:] + inputs[:n], {})),
 
-            "linear_layer": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: lambda id, inputs: (
-                [(x, str((l, i, o)) + str(id)) for x in inputs], [str((l, i, o)) + str(id) for _ in range(0, o)],
-                {str((l, i, o)) + str(id): id})),
+            "node": (lambda l, i, o, para: lambda id, inputs: ([(x,l + str(id)) for x in inputs],  [l + str(id) for _ in range(0,o)], {l + str(id) : id})),
 
-            "sigmoid": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: lambda id, inputs: (
-                [(x, str((l, i, o)) + str(id)) for x in inputs], [str((l, i, o)) + str(id) for _ in range(0, o)],
-                {str((l, i, o)) + str(id): id})),
+            "linear": (lambda in_f, out_f, bias, i, o, para: lambda id, inputs: ([(x, str(para) + str(id)) for x in inputs],  [str(para) + str(id) for _ in range(0,o)], {str(para) + str(id): id})),
 
-            "relu": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: lambda id, inputs: (
-                [(x, str((l, i, o)) + str(id)) for x in inputs], [str((l, i, o)) + str(id) for _ in range(0, o)],
-                {str((l, i, o)) + str(id): id})),
+            "sigmoid": (lambda i, o, para: lambda id, inputs: ([(x, str(para) + str(id)) for x in inputs],  [str(para) + str(id) for _ in range(0,o)], {str(para) + str(id): id})),
 
-            "sharpness_sigmoid": (
-                lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: lambda id, inputs: (
-                [(x, str((l, i, o)) + str(id)) for x in inputs], [str((l, i, o)) + str(id) for _ in range(0, o)],
-                {str((l, i, o)) + str(id): id})),
+            "sharpness_sigmoid": (lambda s, i, o, para: lambda id, inputs: ([(x, str(para) + str(id)) for x in inputs],  [str(para) + str(id) for _ in range(0,o)], {str(para) + str(id): id})),
 
-            "lte": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: lambda id, inputs: (
-                [(x, str((l, i, o)) + str(id)) for x in inputs], [str((l, i, o)) + str(id) for _ in range(0, o)],
-                {str((l, i, o)) + str(id): id})),
+            "relu": (lambda inplace, i, o, para: lambda id, inputs: ([(x, str(para) + str(id)) for x in inputs],  [str(para) + str(id) for _ in range(0,o)], {str(para) + str(id): id})),
 
-            "sum": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: lambda id, inputs: (
-                [(x, str((l, i, o)) + str(id)) for x in inputs], [str((l, i, o)) + str(id) for _ in range(0, o)],
-                {str((l, i, o)) + str(id): id})),
+            "lte": (lambda t, i, o, para: lambda id, inputs: ([(x, str(para) + str(id)) for x in inputs],  [str(para) + str(id) for _ in range(0,o)], {str(para) + str(id): id})),
 
-            "product": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: lambda id, inputs: (
-                [(x, str((l, i, o)) + str(id)) for x in inputs], [str((l, i, o)) + str(id) for _ in range(0, o)],
-                {str((l, i, o)) + str(id): id})),
+            "join": (lambda i, o, para: lambda id, inputs: ([(x, str(para) + str(id)) for x in inputs],  [str(para) + str(id) for _ in range(0,o)], {str(para) + str(id): id})),
 
             "beside_singleton": (lambda i, o, ls, para, x: x),
 
@@ -1617,82 +1492,102 @@ Learner(
                                                                        y[0]((id[0] + 2.5, id[1]), x(id, inputs)[1])[1],
                                                                        y[0]((id[0] + 2.5, id[1]), x(id, inputs)[1])[2] | x(id, inputs)[2]),
                                                                       i)),
+            "mse_loss": (lambda l: ()),
+
+            "adam_optimizer": (lambda lr, o: ()),
+
+            "learner": (lambda i, o, r, e, lr, l, opt, loss, optimizer, model: model)
         }
 
 
+    def pytorch_code_algebra(self):
+        return {
+            "edges": (lambda io, para: lambda id: (f"""""", f"""""")),
+
+            "swap": (lambda io, n, m, para: lambda id: (f"""""", f"""""")),
+
+            "linear": (lambda in_f, out_f, bias, i, o, para: lambda id: (f"""
+            self.linear_{id} = nn.Linear({in_f}, {out_f}, bias={bias})
+""", lambda x: f"self.linear_{id}({x})")),
+
+            "sigmoid": (lambda i, o, para: lambda id: (f"", lambda x: f"torch.sigmoid({x})")),
+
+            "sharpness_sigmoid": (lambda s, i, o, para: lambda id: (f"""
+            self.sharpness_{id} = {s}
+""", lambda x: f"torch.sigmoid(-self.sharpness_{id} * {x})")),
+
+            "relu": (lambda inplace, i, o, para: lambda id: (f"""
+            self.relu_{id} = nn.ReLU(inplace={inplace})
+""", lambda x: f"self.relu_{id}({x})")),
+
+            "lte": (lambda t, i, o, para: lambda id: (f"", lambda x: f"({x} <= 0).float()")),
+
+            "join": (lambda i, o, para: lambda id: (f"", f"""""")),
+
+            "beside_singleton": (lambda i, o, ls, para, x: lambda id: (f"""""", f"""""")),
+
+            "beside_cons": (lambda i, i1, i2, o, o1, o2, ls, head, tail, x, y: lambda id: (f"""""", f"""""")),
+
+            "before_singleton": (lambda i, o, r, ls, ls1, x: lambda id: (f"""""", f"""""")),
+
+            "before_cons": (lambda i, j, o, r, ls, head, tail, x, y: lambda id: (f"""""", f"""""")),
+
+            "mse_loss": (lambda l: lambda id: (f"""""", f"""""")),
+
+            "adam_optimizer": (lambda lr, o: lambda id: (f"""""", f"""""")),
+
+            "learner": (lambda i, o, r, e, lr, l, opt, loss, optimizer, model: lambda id: (f"""""", f"""""")),
+            }
+
+
+
+
 if __name__ == "__main__":
-    repo = ODE_DAG_Repository(dimensions=[1,2,3,4], linear_feature_dimensions=[1], sharpness_values=[2], threshold_values=[0], learning_rate_values=[1e-2], n_epoch_values=[10000])
+    repo = ODE_DAG_Repository(dimensions=range(1, 4), linear_feature_dimensions=range(1, 2), sharpness_values=[2],
+                              threshold_values=[0], learning_rate_values=[1e-2], adam_learning_rate_values=[1e-2],
+                              n_epoch_values=[10000])
 
-    edge = (("swap", 0, 1), 1, 1)
+    target0 = Constructor("Model_component",
+                          Constructor("input", Literal(1))
+                          & Constructor("output", Literal(1))
+                          & Constructor("structure", Literal((repo.Linear(1, 1, True), 1, 1)))
+                          )
 
-    def parallel_edges(n):
-        if n <= 0:
-            raise ValueError("n must be positive")
-        else:
-            return (("swap", 0, n), n, n)
-    # 81 terms
-    target1 = Constructor("DAG",
+    target1 = Constructor("Model",
                           Constructor("input", Literal(1))
                           & Constructor("output", Literal(1))
                           & Constructor("structure", Literal(
-                              ((None,),(None,),)
-                          )))
+                              (((repo.Linear(1, 1, True), 1, 1),),
+                               ((repo.ReLu(), 1, 1),),
+                               ((repo.Linear(1, 1, True), 1, 1),))
+                          ))
+                          )
 
-    target2 = Constructor("Learner", target1
-                                & Constructor("Loss", Constructor("type", Literal(repo.MSEloss())))
-                                & Constructor("Optimizer", Constructor("type", Literal(repo.Adam(1e-2))))
-                                & Constructor("epochs", Literal(10000))
-                                )
-
-    target_trapezoid = Constructor("Learner", Constructor("DAG",
+    target2 = Constructor("Model",
                           Constructor("input", Literal(3))
                           & Constructor("output", Literal(1))
                           & Constructor("structure", Literal(
-                              (
-                                  (
-                                      (repo.Linear(1, 1, True), 1, 1),
-                                      (repo.Linear(1, 1, True), 1, 1),
-                                      (repo.Linear(1, 1, True), 1, 1)
-                                  ), #left, split, right
-                                  (
-                                      edge,
-                                      (repo.LTE(0), 1, 2),
-                                      edge
-                                  ),  # left, gate, right
-                                  (
-                                      (repo.Product(), 2, 1),
-                                      (repo.Product(), 2, 1)
-                                  ), # left_out, righ_out (but right_out is gate instead of (1 - gate))
-                                  (
-                                      (repo.Sum(), 2, 1),
-                                  )
-                              )
-                          )))
-                                & Constructor("Loss", Constructor("type", Literal(repo.MSEloss())))
-                                & Constructor("Optimizer", Constructor("type", Literal(repo.Adam(1e-2))))
-                                & Constructor("epochs", Literal(10000))
-                                )
+                              (None, None, None)
+                          ))
+                          )
 
-    target = target_trapezoid
+    target3 = Constructor("Learner", target1
+                          & Constructor("Loss", Constructor("type", Literal(repo.MSEloss())))
+                          & Constructor("Optimizer", Constructor("type", Literal(repo.Adam(1e-2))))
+                          & Constructor("learning_rate", Literal(1e-2))
+                          & Constructor("epochs", Literal(10000))
+                          )
 
+    target = target3
+    from cl3s import SearchSpaceSynthesizer
     synthesizer = SearchSpaceSynthesizer(repo.specification(), {})
-
-    search_space = synthesizer.construct_search_space(target).prune()
-    print("finish synthesis, start enumerate")
-
-    terms = search_space.enumerate_trees(target, 3000)
-
-    print("enumeration finished")
-
-    terms_list = list(terms)
-
-    #term = terms_list[0]
 
     print(target)
 
-    print(f"number of terms: {len(terms_list)}")
+    search_space = synthesizer.construct_search_space(target).prune()
+    print("finish synthesis, start enumerate")
+    terms = search_space.enumerate_trees(target, 10)
 
-    for t in terms_list:
+    for t in terms:
+        #print(t)
         print(t.interpret(repo.pretty_term_algebra()))
-
-

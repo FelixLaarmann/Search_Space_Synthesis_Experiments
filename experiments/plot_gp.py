@@ -108,7 +108,7 @@ def to_grakel_graph_A(t):
 
 
 if __name__ == "__main__":
-    repo = Labeled_DAG_Repository(labels=label, dimensions=range(1, 4))
+    repo = Labeled_DAG_Repository(labels=label, dimensions=range(1, 3))
 
     # This target is isomorphic to a 4-tuple of the labels.
     # Therefore, we the search space contains 3^4 = 81 elements.
@@ -135,13 +135,21 @@ if __name__ == "__main__":
                               ((None, None), (None,None))
                           )))
 
-    # <3000 terms
+    # >3000 terms
     target4 = Constructor("DAG",
                                   Constructor("input", Literal(1))
                                   & Constructor("output", Literal(1))
                                   & Constructor("structure", Literal(
                                       ((None,), (None, None), (None, None), (None,))
                                   )))
+
+    # 594 terms
+    target5 = Constructor("DAG",
+                          Constructor("input", Literal(1))
+                          & Constructor("output", Literal(1))
+                          & Constructor("structure", Literal(
+                              ((None,), None, (None,))
+                          )))
 
     target = target2
 
