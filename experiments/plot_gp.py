@@ -13,6 +13,8 @@ import numpy as np
 
 from sklearn.gaussian_process import GaussianProcessRegressor
 
+label = ["A", "B", "C"]
+
 def plot_term(t):
     f, inputs = t.interpret(repo.edgelist_algebra())
     edgelist, to_outputs, pos_A = f((-3.8, -3.8), ["input" for _ in range(0, inputs)])
@@ -66,13 +68,51 @@ def to_grakel_graph(t):
 
     return gk_graph
 
+def to_grakel_graph_AB(t):
+    f, inputs = t.interpret(repo.edgelist_algebra())
+    edgelist, to_outputs, pos_A = f((-3.8, -3.8), ["input" for _ in range(0, inputs)])
+    edgelist = edgelist + [(o, "output") for o in to_outputs]
+
+    G = nx.MultiDiGraph()
+    G.add_edges_from(edgelist)
+
+    relabel = {n: ("AB" if "A" in n
+                   else "AB" if "B" in n
+                   else "C" if "C" in n
+                   else n)
+               for n in G.nodes()}
+
+    for n in G.nodes():
+        G.nodes[n]['symbol'] = relabel[n]
+
+    gk_graph = graph_from_networkx([G.to_undirected()], node_labels_tag='symbol')
+
+    return gk_graph
+
+def to_grakel_graph_A(t):
+    f, inputs = t.interpret(repo.edgelist_algebra())
+    edgelist, to_outputs, pos_A = f((-3.8, -3.8), ["input" for _ in range(0, inputs)])
+    edgelist = edgelist + [(o, "output") for o in to_outputs]
+
+    G = nx.MultiDiGraph()
+    G.add_edges_from(edgelist)
+
+    relabel = {n: "A" for n in G.nodes()}
+
+    for n in G.nodes():
+        G.nodes[n]['symbol'] = relabel[n]
+
+    gk_graph = graph_from_networkx([G.to_undirected()], node_labels_tag='symbol')
+
+    return gk_graph
+
 
 if __name__ == "__main__":
-    repo = Labeled_DAG_Repository(labels=["A", "B", "C"], dimensions=range(1, 4))
+    repo = Labeled_DAG_Repository(labels=label, dimensions=range(1, 4))
 
     # This target is isomorphic to a 4-tuple of the labels.
     # Therefore, we the search space contains 3^4 = 81 elements.
-    target_linear = Constructor("DAG",
+    target1 = Constructor("DAG",
                                 Constructor("input", Literal(1))
                                 & Constructor("output", Literal(1))
                                 & Constructor("structure", Literal(
@@ -80,21 +120,30 @@ if __name__ == "__main__":
                                 )))
 
     # 135 terms, because we may have a parallel edge in the middle layer.
-    target_parallel = Constructor("DAG",
+    target2 = Constructor("DAG",
                                 Constructor("input", Literal(1))
                                 & Constructor("output", Literal(1))
                                 & Constructor("structure", Literal(
                                     ((None,), (None, None), (None,))
                                 )))
 
-    target_bigger = Constructor("DAG",
+    # 513 terms
+    target3 = Constructor("DAG",
+                          Constructor("input", Literal(2))
+                          & Constructor("output", Literal(2))
+                          & Constructor("structure", Literal(
+                              ((None, None), (None,None))
+                          )))
+
+    # <3000 terms
+    target4 = Constructor("DAG",
                                   Constructor("input", Literal(1))
                                   & Constructor("output", Literal(1))
                                   & Constructor("structure", Literal(
                                       ((None,), (None, None), (None, None), (None,))
                                   )))
 
-    target = target_bigger
+    target = target2
 
     synthesizer = SearchSpaceSynthesizer(repo.specification(), {})
 
@@ -119,8 +168,10 @@ if __name__ == "__main__":
         print(t.interpret(repo.pretty_term_algebra()))
     """
 
-    kernel = WeisfeilerLehmanKernel(to_grakel_graph=to_grakel_graph)
+    kernel_fit = WeisfeilerLehmanKernel(n_iter=2, to_grakel_graph=to_grakel_graph)
+    kernel = WeisfeilerLehmanKernel(n_iter=1, to_grakel_graph=to_grakel_graph_AB)
 
+    """
     # Plot the kernel matrix for the first 10 terms
     L_small = [t.interpret(repo.pretty_term_algebra()) for t in terms_list[:10]]
 
@@ -134,9 +185,10 @@ if __name__ == "__main__":
     plt.yticks(np.arange(len(X_small)), L_small)
     plt.title("Term similarity under the kernel")
     plt.show()
+    """
 
     def f_obj(t):
-        return kernel._f(term, t)
+        return kernel_fit._f(term, t)
 
     print(f"Our objective function will use the kernel to compare terms to the term:\n{term.interpret(repo.pretty_term_algebra())}")
 
@@ -158,8 +210,9 @@ if __name__ == "__main__":
     plt.plot(L, y, linestyle="dotted")
     plt.xlabel("$t$")
     plt.ylabel("$f obj(t)$")
-    _ = plt.title("True generative process")
+    _ = plt.title("Search Space Objective Function")
     plt.show()
+
 
     rng = np.random.RandomState(1)
     training_indices = rng.choice(np.arange(y.size), size=10, replace=False)
@@ -167,7 +220,7 @@ if __name__ == "__main__":
 
     L_train = np.array([t.interpret(repo.pretty_term_algebra()) for t in X_train])
 
-    gaussian_process = GaussianProcessRegressor(kernel=kernel, optimizer=None, normalize_y=False)
+    gaussian_process = GaussianProcessRegressor(kernel=kernel,alpha=1e-10, optimizer=None, normalize_y=False)
     gaussian_process.fit(X_train, y_train)
 
     mean_prediction, std_prediction = gaussian_process.predict(X, return_std=True)
@@ -175,6 +228,16 @@ if __name__ == "__main__":
     ei = ExpectedImprovement(gaussian_process, True)
 
     y_ei = np.array([ei(t) for t in X])
+
+    plt.plot(L, y, label="f obj", linestyle="dotted")
+    plt.scatter(L_train, y_train, label="Observations")
+    plt.plot(L, mean_prediction, label="Mean prediction")
+    plt.plot(L, y_ei, label="EI", linestyle="dashdot")
+    plt.legend()
+    plt.xlabel("$t$")
+    plt.ylabel("$f obj(t)$")
+    _ = plt.title("Gaussian process regression on search space")
+    plt.show()
 
     plt.plot(L, y, label="f obj", linestyle="dotted")
     plt.scatter(L_train, y_train, label="Observations")
@@ -190,5 +253,5 @@ if __name__ == "__main__":
     plt.legend()
     plt.xlabel("$t$")
     plt.ylabel("$f obj(t)$")
-    _ = plt.title("Gaussian process regression on noise-free dataset")
+    _ = plt.title("Gaussian process regression on search space with confidence interval")
     plt.show()
