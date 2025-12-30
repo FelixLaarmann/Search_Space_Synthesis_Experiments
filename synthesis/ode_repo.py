@@ -75,7 +75,7 @@ class ODE_DAG_Repository:
             in sequential compositions.
     """
 
-    def __init__(self, dimensions, linear_feature_dimensions, sharpness_values, threshold_values, learning_rate_values,
+    def __init__(self, dimensions, linear_feature_dimensions, sharpness_values, threshold_values, constant_values, learning_rate_values,
                  n_epoch_values):
         # additionally to labeled nodes, we have (unlabelled) edges, that needs to be handled additionally
         self.dimensions = dimensions
@@ -84,6 +84,7 @@ class ODE_DAG_Repository:
         self.threshold_values = threshold_values
         self.learning_rate_values = learning_rate_values
         self.n_epoch_values = n_epoch_values
+        self.constant_values = constant_values if 1 in constant_values and 0 in constant_values else constant_values + [0, 1]
 
     @dataclass(frozen=True)
     class Linear:
@@ -109,20 +110,21 @@ class ODE_DAG_Repository:
 
     @dataclass(frozen=True)
     class Sum:
-        trivial = ()
+        with_constant: float = 0
 
     @dataclass(frozen=True)
     class Product:
-        trivial = ()
+        with_constant: float = 1
 
     class Label(Group):
         name = "Label"
 
-        def __init__(self, dimensions, linear_feature_dimensions, sharpness_values, threshold_values):
+        def __init__(self, dimensions, linear_feature_dimensions, sharpness_values, threshold_values, constant_values):
             self.dimensions = dimensions
             self.linear_feature_dimensions = linear_feature_dimensions
             self.sharpness_values = sharpness_values
             self.threshold_values = threshold_values
+            self.constant_values = constant_values
 
         def iter_linear(self):
             for in_f in self.linear_feature_dimensions:
@@ -146,10 +148,13 @@ class ODE_DAG_Repository:
                 yield ODE_DAG_Repository.LTE(threshold=threshold)
 
         def iter_sum(self):
-            yield ODE_DAG_Repository.Sum()
+            for c in self.constant_values:
+                yield ODE_DAG_Repository.Sum(c)
 
         def iter_product(self):
-            yield ODE_DAG_Repository.Product()
+            for c in self.constant_values:
+                if c != 0:
+                    yield ODE_DAG_Repository.Product(c)
 
         def __iter__(self):
             yield from self.iter_linear()
@@ -174,9 +179,9 @@ class ODE_DAG_Repository:
             elif isinstance(item, ODE_DAG_Repository.LTE):
                 return item.threshold in self.threshold_values
             elif isinstance(item, ODE_DAG_Repository.Sum):
-                return True
+                return item.with_constant in self.constant_values
             elif isinstance(item, ODE_DAG_Repository.Product):
-                return True
+                return item.with_constant in self.constant_values and item.with_constant != 0
             else:
                 return False
 
@@ -941,7 +946,7 @@ class ODE_DAG_Repository:
 
     def specification(self):
         labels = self.Label(self.dimensions, self.linear_feature_dimensions,
-                            self.sharpness_values, self.threshold_values)
+                            self.sharpness_values, self.threshold_values, self.constant_values)
         para_labels = self.Para(labels, self.dimensions)
         #print("linear" in para_labels)
         paratuples = self.ParaTuples(para_labels, max_length=max(self.dimensions))
@@ -1621,7 +1626,8 @@ Learner(
 
 
 if __name__ == "__main__":
-    repo = ODE_DAG_Repository(dimensions=[1,2,3,4], linear_feature_dimensions=[1], sharpness_values=[2], threshold_values=[0], learning_rate_values=[1e-2], n_epoch_values=[10000])
+    repo = ODE_DAG_Repository(dimensions=[1,2,3,4], linear_feature_dimensions=[1], sharpness_values=[2],
+                              threshold_values=[0], constant_values=[0, 1, -1], learning_rate_values=[1e-2], n_epoch_values=[10000])
 
     edge = (("swap", 0, 1), 1, 1)
 
@@ -1661,8 +1667,18 @@ if __name__ == "__main__":
                                   ),  # left, gate, right
                                   (
                                       (repo.Product(), 2, 1),
+                                      (repo.Product(-1), 1, 1),
+                                      edge
+                                  ),  # left_out, -gate, right
+                                  (
+                                      edge,
+                                      (repo.Sum(1), 1, 1),
+                                      edge
+                                  ),  # left_out, 1-gate, right
+                                  (
+                                      edge,
                                       (repo.Product(), 2, 1)
-                                  ), # left_out, righ_out (but right_out is gate instead of (1 - gate))
+                                  ), # left_out, right_out
                                   (
                                       (repo.Sum(), 2, 1),
                                   )
@@ -1672,6 +1688,42 @@ if __name__ == "__main__":
                                 & Constructor("Optimizer", Constructor("type", Literal(repo.Adam(1e-2))))
                                 & Constructor("epochs", Literal(10000))
                                 )
+
+    """
+    TODO:
+    Normalization fails to normalize the following structure, that is a bit more naive than above:
+    (
+                                  (
+                                      (repo.Linear(1, 1, True), 1, 1),
+                                      (repo.Linear(1, 1, True), 1, 1),
+                                      (repo.Linear(1, 1, True), 1, 1)
+                                  ), #left, split, right
+                                  (
+                                      edge,
+                                      (repo.LTE(0), 1, 2),
+                                      edge
+                                  ),  # left, gate, right
+                                  (
+                                      edge, 
+                                      edge,
+                                      (repo.Product(-1), 1, 1),
+                                      edge
+                                  ),  # left, gate, -gate, right
+                                  (
+                                      edge, 
+                                      edge,
+                                      (repo.Sum(1), 1, 1),
+                                      edge
+                                  ),  # left, gate, 1-gate, right
+                                  (
+                                      (repo.Product(), 2, 1)
+                                      (repo.Product(), 2, 1)
+                                  ), # left_out, right_out
+                                  (
+                                      (repo.Sum(), 2, 1),
+                                  )
+                              )
+    """
 
     target = target_trapezoid
 
