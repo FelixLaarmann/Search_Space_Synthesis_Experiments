@@ -944,6 +944,20 @@ class ODE_DAG_Repository:
 
     # TODO: add constraints for edges between linear layers
 
+    def linear_layer_constraint(self, head: DerivationTree[Any, str, Any], tail: DerivationTree[Any, str, Any], i : int) -> bool:
+        x = head.interpret(self.edgelist_algebra())
+        y = tail.interpret(self.edgelist_algebra())
+        id = (0,0)
+        inputs = ["input" for _ in range(0,i)]
+        edgelist = y[0]((id[0] + 2.5, id[1]), x(id, inputs)[1])[0]
+        for l, r in edgelist:
+            if "Linear" in l and "Linear" in r:
+                if "out_features=" in l and "in_features=" in r:
+                    l_out = (l.partition("out_features=")[-1]).partition(",")[0]
+                    r_in = (r.partition("in_features=")[-1]).partition(",")[0]
+                    return l_out == r_in
+        return True
+
     def specification(self):
         labels = self.Label(self.dimensions, self.linear_feature_dimensions,
                             self.sharpness_values, self.threshold_values, self.constant_values)
@@ -1486,6 +1500,7 @@ class ODE_DAG_Repository:
             .constraint(lambda v: self.swaplaw3(v["x"], v["y"]))
             .constraint(lambda v: self.swaplaw4(v["x"], v["y"]))
             .constraint(lambda v: self.dag_constraint(v["x"], v["y"], v["i"])) # DAG: At most one edge between any two nodes
+            .constraint(lambda v: self.linear_layer_constraint(v["x"], v["y"], v["i"]))
             .suffix(Constructor("DAG",
                                 Constructor("input", Var("i"))
                                 & Constructor("input", Literal(None))
@@ -1626,7 +1641,7 @@ Learner(
 
 
 if __name__ == "__main__":
-    repo = ODE_DAG_Repository(dimensions=[1,2,3,4], linear_feature_dimensions=[1], sharpness_values=[2],
+    repo = ODE_DAG_Repository(dimensions=[1,2,3,4], linear_feature_dimensions=[1, 2], sharpness_values=[2],
                               threshold_values=[0], constant_values=[0, 1, -1], learning_rate_values=[1e-2], n_epoch_values=[10000])
 
     edge = (("swap", 0, 1), 1, 1)
@@ -1725,7 +1740,19 @@ if __name__ == "__main__":
                               )
     """
 
-    target = target_trapezoid
+    target_empty = Constructor("DAG",
+                          Constructor("input", Literal(1))
+                          & Constructor("output", Literal(1))
+                          & Constructor("structure", Literal(
+                              (
+                                  (
+                                      (repo.Linear(1, 2, True), 1, 1),
+                                  ),
+                                  (
+                                      (repo.Linear(1, 1, True), 1, 1),),)
+                          )))
+
+    target = target_empty
 
     synthesizer = SearchSpaceSynthesizer(repo.specification(), {})
 
