@@ -1639,6 +1639,49 @@ Learner(
                                                                       i)),
         }
 
+    def pytorch_code_algebra(self):
+        return {
+            "edges": (lambda io, para1, para2, para3, para4, para5, para6, para7, para8, para9, para10, para11, para12, para13, para14, para15, para16: lambda id, x: (f"""""", f"""""")),
+
+            "swap": (lambda io, n, m, para1, para2, para3, para4, para5, para6, para7, para8, para9, para10, para11, para12, para13, para14, para15, para16: lambda id, x: (f"""""", f"""""")),
+
+            "linear_layer": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: lambda id, x: (f"""""", f"""""")),
+
+            "sigmoid": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: lambda id, x: (f"""""", f"""""")),
+
+            "relu": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: lambda id, x: (f"""""", f"""""")),
+
+            "sharpness_sigmoid": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: lambda id, x: (f"""""", f"""""")),
+
+            "lte": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: lambda id, x: (f"""""", f"""""")),
+
+            "sum": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: lambda id, x: (f"""""", f"""""")),
+
+            "product": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: lambda id, x: (f"""""", f"""""")),
+
+            "beside_singleton": (lambda i, o, ls, para, x: lambda id, x: (f"""""", f"""""")),
+
+            "beside_cons": (lambda i, i1, i2, o, o1, o2, ls, head, tail, x, y: lambda id, x: (f"""""", f"""""")),
+
+            "before_singleton": (lambda i, o, r, ls, ls1, x: lambda id, x: (f"""""", f"""""")),
+
+            "before_cons": (lambda i, j, o, r, ls, head, tail, x, y: lambda id, x: (f"""""", f"""""")),
+
+            "mse_loss": (lambda l: str(l)),
+
+            "adam_optimizer": (lambda o: str(o)),
+
+            "learner": (lambda i, o, r, ls, e, l, opt, loss, optimizer, model: f"""
+init =
+{model((0,0), "x")[0]}
+
+forward(x):
+{model((0,0), "x")[1]}
+""")
+        }
+
+
+
 
 if __name__ == "__main__":
     repo = ODE_DAG_Repository(dimensions=[1,2,3,4], linear_feature_dimensions=[1, 2], sharpness_values=[2],
@@ -1752,7 +1795,7 @@ if __name__ == "__main__":
                                       (repo.Linear(1, 1, True), 1, 1),),)
                           )))
 
-    target = target_empty
+    target = target_trapezoid
 
     synthesizer = SearchSpaceSynthesizer(repo.specification(), {})
 
@@ -1772,6 +1815,6 @@ if __name__ == "__main__":
     print(f"number of terms: {len(terms_list)}")
 
     for t in terms_list:
-        print(t.interpret(repo.pretty_term_algebra()))
+        print(t.interpret(repo.pytorch_code_algebra()))
 
 
