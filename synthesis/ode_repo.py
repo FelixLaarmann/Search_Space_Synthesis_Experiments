@@ -1663,7 +1663,7 @@ Learner(
 """ for k in range(o)]), tuple(f"x_{id[0]}_{id[1]}_{k}" for k in range(o)))),
 
             "relu": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: lambda id, inputs: (f"""
-        self.relu_{id[0]}_{id[1]} = nn.ReLU({l.inplace})
+        self.relu_{id[0]}_{id[1]} = nn.ReLU(inplace={l.inplace})
 """, "\n".join([f"""
         x_{id[0]}_{id[1]}_{k} = self.relu_{id[0]}_{id[1]}({", ".join(inputs)})
 """ for k in range(o)]), tuple(f"x_{id[0]}_{id[1]}_{k}" for k in range(o)))),
@@ -1702,17 +1702,72 @@ Learner(
                 x((id[0], id[1]), inputs)[1] + y((id[0] + 1, id[1]), x((id[0], id[1]), inputs)[2])[1], # concatenate forwards
                 y((id[0] + 1, id[1]), x((id[0], id[1]), inputs)[2])[2])), # output vector is the output of y
 
-            "mse_loss": (lambda l: str(l)),
+            "mse_loss": (lambda l: f"nn.MSELoss(reduction='{l.reduction}')"),
 
-            "adam_optimizer": (lambda o: str(o)),
+            "adam_optimizer": (lambda o: lambda m: f"optim.Adam({m}.parameters(), lr={o.learning_rate})"),
 
             "learner": (lambda i, o, r, ls, e, l, opt, loss, optimizer, model: f"""
-init =
+import torch
+import torch.nn as nn
+import torch.optim as optim
+import matplotlib.pyplot as plt
+import pandas as pd
+import tqdm
+
+def fit_model(model, x, y, n_epochs=2_000, verbose=True):
+    optimizer = {optimizer("model")}
+    loss_fn = {loss}
+    
+    pbar = tqdm.tqdm(range(n_epochs), total=n_epochs, desc=f"Training SynthesizedModel", disable=not verbose)
+    
+    for _ in pbar:
+        optimizer.zero_grad()
+        pred = model(x).ravel()
+        loss = loss_fn(pred, y)
+        loss.backward()
+        optimizer.step()
+        
+        pbar.set_postfix({"{"}"loss": f"{"{"}loss.item():.6f{"}"}"{"}"})
+    
+    return model
+
+class SynthesizedModel(nn.Module):
+    def __init__(self)
 {model((0,0), tuple(("x" for _ in range(i))))[0]}
 
-forward(x):
+    def forward(self, x):
 {model((0,0), tuple(("x" for _ in range(i))))[1]}
-return {', '.join(model((0,0), tuple(("x" for _ in range(i))))[2])}
+        return {', '.join(model((0,0), tuple(("x" for _ in range(i))))[2])}
+        
+# Andreas will provide a dataloader for training data and test data
+x,y = ANDREAS!!!!!!!!!
+x_test,y_test = ANDREAS!!!!!!!!!
+
+m = SynthesizedModel()
+trained_model = fit_model(m, x, y, n_epochs={e})
+
+loss_fn = {loss}
+with torch.inference_mode():
+    y_pred = trained_model(x_test).ravel()
+    loss = loss_fn(y_pred, y_test)
+    print("Test Loss: " + loss.item())
+    
+# Plot true function
+plt.figure(figsize=(12, 8))
+plt.plot(x_test.view(-1), y_test, label="True Trapezoid", linewidth=3)
+
+with torch.inference_mode():
+    y_pred = trained_model(x_test).ravel()
+    plt.plot(x_test.view(-1), y_pred, label=f"Learned SynthesizedModel", linestyle="--")
+    
+plt.title("True vs Learned Trapezoid Mapping")
+plt.xlabel("x")
+plt.ylabel("y")
+plt.legend()
+plt.grid()
+plt.savefig("plot.pdf")
+plt.savefig("plot.png")
+plt.show()
 """)
         }
 
