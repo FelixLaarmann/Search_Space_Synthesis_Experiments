@@ -942,8 +942,6 @@ class ODE_DAG_Repository:
         edgeset = set(edgelist)
         return len(edgelist) == len(edgeset)
 
-    # TODO: add constraints for edges between linear layers
-
     def linear_layer_constraint(self, head: DerivationTree[Any, str, Any], tail: DerivationTree[Any, str, Any], i : int) -> bool:
         x = head.interpret(self.edgelist_algebra())
         y = tail.interpret(self.edgelist_algebra())
@@ -957,6 +955,8 @@ class ODE_DAG_Repository:
                     r_in = (r.partition("in_features=")[-1]).partition(",")[0]
                     return l_out == r_in
         return True
+
+    # TODO: Are there additional dimension constraints necessary?
 
     def specification(self):
         labels = self.Label(self.dimensions, self.linear_feature_dimensions,
@@ -1640,6 +1640,85 @@ Learner(
         }
 
     def pytorch_code_algebra(self):
+        # construct the __init__ part and forward function in parallel
+        # register a module in __init__, give it a unique name (thats why we abstract over an id), and use that name in forward
+        # should be similar to edgelist algebra
+        # assume, that x is a vector with the length of the input dimension
+        # we need to return a triple of two strings and the output vector (then its really similar to edgelist, yippieh!!!)
+        return {
+            "edges": (lambda io, para1, para2, para3, para4, para5, para6, para7, para8, para9, para10, para11, para12, para13, para14, para15, para16: lambda id, inputs: (f"""""", f"""""", inputs)),
+
+            "swap": (lambda io, n, m, para1, para2, para3, para4, para5, para6, para7, para8, para9, para10, para11, para12, para13, para14, para15, para16: lambda id, inputs: (f"""""", f"""""", inputs[n:] + inputs[:n])),
+
+            "linear_layer": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: lambda id, inputs: (f"""
+        self.linear_{id[0]}_{id[1]} = nn.Linear({l.in_features}, {l.out_features}, {l.bias}) 
+""", "\n".join([f"""
+        x_{id[0]}_{id[1]}_{k} = self.linear_{id[0]}_{id[1]}({", ".join(inputs)})
+""" for k in range(o)]), tuple(f"x_{id[0]}_{id[1]}_{k}" for k in range(o)))),
+
+            "sigmoid": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: lambda id, inputs: (f"""
+        self.sigmoid_{id[0]}_{id[1]} = nn.Sigmoid()
+""", "\n".join([f"""
+        x_{id[0]}_{id[1]}_{k} = self.sigmoid_{id[0]}_{id[1]}({", ".join(inputs)})
+""" for k in range(o)]), tuple(f"x_{id[0]}_{id[1]}_{k}" for k in range(o)))),
+
+            "relu": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: lambda id, inputs: (f"""
+        self.relu_{id[0]}_{id[1]} = nn.ReLU({l.inplace})
+""", "\n".join([f"""
+        x_{id[0]}_{id[1]}_{k} = self.relu_{id[0]}_{id[1]}({", ".join(inputs)})
+""" for k in range(o)]), tuple(f"x_{id[0]}_{id[1]}_{k}" for k in range(o)))),
+
+            "sharpness_sigmoid": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: lambda id, inputs: (f"""
+        self.sharp_sigmoid_{id[0]}_{id[1]} = lambda x: torch.sigmoid(-{l.sharpness} * x)
+""", "\n".join([f"""
+        x_{id[0]}_{id[1]}_{k} = self.sharp_sigmoid_{id[0]}_{id[1]}({", ".join(inputs)})
+""" for k in range(o)]), tuple(f"x_{id[0]}_{id[1]}_{k}" for k in range(o)))),
+
+            "lte": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: lambda id, inputs: (f"""
+        self.lte_{id[0]}_{id[1]} = lambda x: (x <= 0).float()
+""", "\n".join([f"""
+        x_{id[0]}_{id[1]}_{k} = self.lte_{id[0]}_{id[1]}({", ".join(inputs)})
+""" for k in range(o)]), tuple(f"x_{id[0]}_{id[1]}_{k}" for k in range(o)))),
+
+            "sum": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: lambda id, inputs: (f"""""","\n".join([f"""
+        x_{id[0]}_{id[1]}_{k} = {l.with_constant} + {" + ".join(inputs)}
+""" for k in range(o)]), tuple(f"x_{id[0]}_{id[1]}_{k}" for k in range(o)))),
+
+            "product": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: lambda id, inputs: (f"""""","\n".join([f"""
+        x_{id[0]}_{id[1]}_{k} = {l.with_constant} * {" * ".join(inputs)}
+""" for k in range(o)]), tuple(f"x_{id[0]}_{id[1]}_{k}" for k in range(o)))),
+
+            "beside_singleton": (lambda i, o, ls, para, x: x),
+
+            "beside_cons": (lambda i, i1, i2, o, o1, o2, ls, head, tail, x, y: lambda id, inputs: (
+                x(id, inputs[:i1])[0] + y((id[0], id[1] + 1), inputs[i1:])[0], # concatenate inits
+                x(id, inputs[:i1])[1] + y((id[0], id[1] + 1), inputs[i1:])[1], # concatenate forwards
+                x(id, inputs[:i1])[2] + y((id[0], id[1] + 1), inputs[i1:])[2])), # concatenate output vectors
+
+            "before_singleton": (lambda i, o, r, ls, ls1, x: x),
+
+            "before_cons": (lambda i, j, o, r, ls, head, tail, x, y: lambda id, inputs: (
+                x((id[0], id[1]), inputs)[0] + y((id[0] + 1, id[1]), x((id[0], id[1]), inputs)[2])[0], # concatenate inits
+                x((id[0], id[1]), inputs)[1] + y((id[0] + 1, id[1]), x((id[0], id[1]), inputs)[2])[1], # concatenate forwards
+                y((id[0] + 1, id[1]), x((id[0], id[1]), inputs)[2])[2])), # output vector is the output of y
+
+            "mse_loss": (lambda l: str(l)),
+
+            "adam_optimizer": (lambda o: str(o)),
+
+            "learner": (lambda i, o, r, ls, e, l, opt, loss, optimizer, model: f"""
+init =
+{model((0,0), tuple(("x" for _ in range(i))))[0]}
+
+forward(x):
+{model((0,0), tuple(("x" for _ in range(i))))[1]}
+return {', '.join(model((0,0), tuple(("x" for _ in range(i))))[2])}
+""")
+        }
+
+    def pytorch_function_algebra(self):
+        # Use nn.ModuleDict to store layers with unique names (that's why we abstract over an id) and implement it as the pytorch algebra
+        # nn.ModuleDict then becomes the __init__ part and the forward function is constructed accordingly
         return {
             "edges": (lambda io, para1, para2, para3, para4, para5, para6, para7, para8, para9, para10, para11, para12, para13, para14, para15, para16: lambda id, x: (f"""""", f"""""")),
 
@@ -1673,13 +1752,12 @@ Learner(
 
             "learner": (lambda i, o, r, ls, e, l, opt, loss, optimizer, model: f"""
 init =
-{model((0,0), "x")[0]}
+{model((0,0), tuple(("x" for _ in range(i))))[0]}
 
 forward(x):
-{model((0,0), "x")[1]}
+{model((0,0), ("x" for _ in range(i)))[1]}
 """)
         }
-
 
 
 
@@ -1802,7 +1880,7 @@ if __name__ == "__main__":
     search_space = synthesizer.construct_search_space(target).prune()
     print("finish synthesis, start enumerate")
 
-    terms = search_space.enumerate_trees(target, 3000)
+    terms = search_space.enumerate_trees(target, 10)
 
     print("enumeration finished")
 
