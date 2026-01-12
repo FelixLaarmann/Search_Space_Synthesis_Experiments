@@ -4,6 +4,12 @@ from typing import Any
 
 from dataclasses import dataclass
 
+import torch
+import torch.nn as nn
+import torch.optim as optim
+
+from synthesis.utils import generate_data
+
 class ODE_DAG_Repository:
     """
             The terms have to be in normal form under the following term rewriting system:
@@ -1771,47 +1777,237 @@ plt.show()
 """)
         }
 
+    class EdgesModule(nn.Module):
+        # nn.Identity? our forward is tuple of tensors -> tuple of tensors, so maybe not...
+        def __init__(self):
+            super().__init__()
+
+        def forward(self, x):
+            return x
+
+    class SwapModule(nn.Module):
+        def __init__(self, n, m):
+            super().__init__()
+            self.n = n
+            self.m = m
+
+        def forward(self, x):
+            return x[self.n:] + x[:self.n]
+
+    class SynthLinear(nn.Module):
+        def __init__(self, output_dim, in_features, out_features, bias=True):
+            super().__init__()
+            self.linear = nn.Linear(in_features, out_features, bias)
+            self.o = output_dim
+
+        def forward(self, x):
+            x = self.linear(x[0])  # 1 is the only available input dimension for linear layers
+            return tuple((x for _ in range(self.o)))
+
+    class SynthSigmoid(nn.Module):
+        def __init__(self, output_dim):
+            super().__init__()
+            self.sigmoid = nn.Sigmoid()
+            self.o = output_dim
+
+        def forward(self, x):
+            x = self.sigmoid(x[0])
+            return tuple((x for _ in range(self.o)))
+
+    class SynthReLU(nn.Module):
+        def __init__(self, output_dim, inplace=False):
+            super().__init__()
+            self.relu = nn.ReLU(inplace=inplace)
+            self.o = output_dim
+
+        def forward(self, x):
+            x = self.relu(x[0])
+            return tuple((x for _ in range(self.o)))
+
+    class SynthSharpSigmoid(nn.Module):
+        def __init__(self, output_dim, sharpness):
+            super().__init__()
+            self.sharpness = sharpness
+            self.o = output_dim
+
+        def forward(self, x):
+            x = torch.sigmoid(-self.sharpness * x[0])
+            return tuple((x for _ in range(self.o)))
+
+    class SynthLTE(nn.Module):
+        def __init__(self, output_dim):
+            super().__init__()
+            self.o = output_dim
+
+        def forward(self, x):
+            x = (x[0] <= 0).float()
+            return tuple((x for _ in range(self.o)))
+
+    class SumModule(nn.Module):
+        def __init__(self, output_dim, with_constant):
+            super().__init__()
+            self.with_constant = with_constant
+            self.o = output_dim
+
+        def forward(self, x):
+            x = self.with_constant + sum(x)
+            return tuple((x for _ in range(self.o)))
+
+    class ProductModule(nn.Module):
+        def __init__(self, output_dim, with_constant):
+            super().__init__()
+            self.with_constant = with_constant
+            self.o = output_dim
+
+        def forward(self, x):
+            prod = self.with_constant
+            for xi in x:
+                prod = prod * xi
+            return tuple((prod for _ in range(self.o)))
+
+    class BesideModule(nn.Module):
+        def __init__(self, head, tail, i1):
+            super().__init__()
+            self.head = head
+            self.tail = tail
+            self.i = i1
+
+        def forward(self, x):
+            head_out = self.head(x[:self.i])
+            tail_out = self.tail(x[self.i:])
+            output_tuple = head_out + tail_out
+            return output_tuple
+
+    class BeforeModule(nn.Module):
+        # nn.Sequential basically, but the type of our forward is tuple of tensors -> tuple of tensors, I want to make sure nothing unforeseen happens
+        def __init__(self, head, tail):
+            super().__init__()
+            self.head = head
+            self.tail = tail if tail is not None else lambda x: x
+
+        def forward(self, x):
+            head_out = self.head(x)
+            tail_out = self.tail(head_out)
+            return tail_out
+
+    class TrapezoidNetPure(nn.Module):
+        def __init__(self, random_weights=False, sharpness=None):
+            super().__init__()
+
+            self.split = nn.Linear(1, 1, bias=True)
+            self.left = nn.Linear(1, 1, bias=True)
+            self.right = nn.Linear(1, 1, bias=True)
+            self.sharpness = sharpness
+
+            if not random_weights:
+                with torch.no_grad():
+                    # For left branch (x <= 0): we want output = x + 10
+                    # So left(x) = x + 10 => weight = 1, bias = 10
+                    self.left.weight.data.fill_(1.0)
+                    self.left.bias.data.fill_(10.0)
+
+                    # For right branch (x > 0): we want output = 10 - x
+                    # So right(x) = 10 - x => weight = -1, bias = 10
+                    self.right.weight.data.fill_(-1.0)
+                    self.right.bias.data.fill_(10.0)
+
+                self.split.weight.data.fill_(1.0)
+                self.split.bias.data.fill_(0.0)
+
+        def forward(self, x):
+            if not self.sharpness:
+                gate = (self.split(x) <= 0).float()
+            else:
+                gate = torch.sigmoid(-self.sharpness * self.split(x))
+
+            left_out = self.left(x) * gate
+            right_out = self.right(x) * (1 - gate)
+
+            return left_out + right_out
+
+    class CopyModule(nn.Module):
+        def __init__(self, input_dim):
+            super().__init__()
+            self.i = input_dim
+
+        def forward(self, x):
+            return tuple((x for _ in range(self.i)))
+
+    class JoinModule(nn.Module):
+        def __init__(self):
+            super().__init__()
+
+        def forward(self, x):
+            if len(x) == 1:
+                return x[0]
+            else:
+                return torch.cat(list(x))
+
+    def learner(self, i, open_model, loss_fn, optim, n_epochs):
+        # training loop for the synthesized model
+        # Andreas will provide a dataloader for training data and test data
+        #x, y =  ANDREAS!!!!!!!!!
+        #x_test, y_test = ANDREAS!!!!!!!!!
+
+        model = nn.Sequential(self.CopyModule(i), open_model, self.JoinModule())
+
+        true_model = self.TrapezoidNetPure()
+
+        # Generate data is a bit noisy to make it closer to the real world
+        # test data is a little bit out of distribution because we change xmin/xmax a little bit
+        x, y = generate_data(true_model, xmin=-10, xmax=10, n_samples=1_000, eps=1e-4)
+        x_test, y_test = generate_data(true_model, xmin=-15, xmax=15, n_samples=1_000, eps=1e-4)
+
+        # fit model
+        optimizer = optim(model)
+        for _ in range(n_epochs):
+            optimizer.zero_grad()
+            pred = model(x).ravel()
+            loss = loss_fn(pred, y)
+            loss.backward()
+            optimizer.step()
+
+        with torch.inference_mode():
+            y_pred = model(x_test).ravel()
+            loss = loss_fn(y_pred, y_test)
+            #print("Test Loss: " + loss.item())
+            return loss.item()
+
     def pytorch_function_algebra(self):
         # Use nn.ModuleDict to store layers with unique names (that's why we abstract over an id) and implement it as the pytorch algebra
         # nn.ModuleDict then becomes the __init__ part and the forward function is constructed accordingly
         return {
-            "edges": (lambda io, para1, para2, para3, para4, para5, para6, para7, para8, para9, para10, para11, para12, para13, para14, para15, para16: lambda id, x: (f"""""", f"""""")),
+            "edges": (lambda io, para1, para2, para3, para4, para5, para6, para7, para8, para9, para10, para11, para12, para13, para14, para15, para16: self.EdgesModule()),
 
-            "swap": (lambda io, n, m, para1, para2, para3, para4, para5, para6, para7, para8, para9, para10, para11, para12, para13, para14, para15, para16: lambda id, x: (f"""""", f"""""")),
+            "swap": (lambda io, n, m, para1, para2, para3, para4, para5, para6, para7, para8, para9, para10, para11, para12, para13, para14, para15, para16: self.SwapModule(n, m)),
 
-            "linear_layer": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: lambda id, x: (f"""""", f"""""")),
+            "linear_layer": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: self.SynthLinear(o, l.in_features, l.out_features, l.bias)),
 
-            "sigmoid": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: lambda id, x: (f"""""", f"""""")),
+            "sigmoid": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: self.SynthSigmoid(o)),
 
-            "relu": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: lambda id, x: (f"""""", f"""""")),
+            "relu": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: self.SynthReLU(o, l.inplace)),
 
-            "sharpness_sigmoid": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: lambda id, x: (f"""""", f"""""")),
+            "sharpness_sigmoid": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: self.SynthSharpSigmoid(o, l.sharpness)),
 
-            "lte": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: lambda id, x: (f"""""", f"""""")),
+            "lte": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: self.SynthLTE(o)),
 
-            "sum": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: lambda id, x: (f"""""", f"""""")),
+            "sum": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: self.SumModule(o, l.with_constant)),
 
-            "product": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: lambda id, x: (f"""""", f"""""")),
+            "product": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: self.ProductModule(o, l.with_constant)),
 
-            "beside_singleton": (lambda i, o, ls, para, x: lambda id, x: (f"""""", f"""""")),
+            "beside_singleton": (lambda i, o, ls, para, x: x),
 
-            "beside_cons": (lambda i, i1, i2, o, o1, o2, ls, head, tail, x, y: lambda id, x: (f"""""", f"""""")),
+            "beside_cons": (lambda i, i1, i2, o, o1, o2, ls, head, tail, x, y: self.BesideModule(x, y, i1)),
 
-            "before_singleton": (lambda i, o, r, ls, ls1, x: lambda id, x: (f"""""", f"""""")),
+            "before_singleton": (lambda i, o, r, ls, ls1, x: x),
 
-            "before_cons": (lambda i, j, o, r, ls, head, tail, x, y: lambda id, x: (f"""""", f"""""")),
+            "before_cons": (lambda i, j, o, r, ls, head, tail, x, y: self.BeforeModule(x, y)),
 
-            "mse_loss": (lambda l: str(l)),
+            "mse_loss": (lambda l: nn.MSELoss(reduction=l.reduction)),
 
-            "adam_optimizer": (lambda o: str(o)),
+            "adam_optimizer": (lambda o: lambda m: optim.Adam(m.parameters(), lr=o.learning_rate)),
 
-            "learner": (lambda i, o, r, ls, e, l, opt, loss, optimizer, model: f"""
-init =
-{model((0,0), tuple(("x" for _ in range(i))))[0]}
-
-forward(x):
-{model((0,0), ("x" for _ in range(i)))[1]}
-""")
+            "learner": (lambda i, o, r, ls, e, l, opt, loss, optimizer, model: self.learner(i, model, loss, optimizer, e)),
         }
 
 
@@ -1949,5 +2145,6 @@ if __name__ == "__main__":
 
     for t in terms_list:
         print(t.interpret(repo.pytorch_code_algebra()))
-
+        loss = t.interpret(repo.pytorch_function_algebra())
+        print("Test Loss: " + str(loss))
 
