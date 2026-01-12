@@ -1890,41 +1890,6 @@ plt.show()
             tail_out = self.tail(head_out)
             return tail_out
 
-    class TrapezoidNetPure(nn.Module):
-        def __init__(self, random_weights=False, sharpness=None):
-            super().__init__()
-
-            self.split = nn.Linear(1, 1, bias=True)
-            self.left = nn.Linear(1, 1, bias=True)
-            self.right = nn.Linear(1, 1, bias=True)
-            self.sharpness = sharpness
-
-            if not random_weights:
-                with torch.no_grad():
-                    # For left branch (x <= 0): we want output = x + 10
-                    # So left(x) = x + 10 => weight = 1, bias = 10
-                    self.left.weight.data.fill_(1.0)
-                    self.left.bias.data.fill_(10.0)
-
-                    # For right branch (x > 0): we want output = 10 - x
-                    # So right(x) = 10 - x => weight = -1, bias = 10
-                    self.right.weight.data.fill_(-1.0)
-                    self.right.bias.data.fill_(10.0)
-
-                self.split.weight.data.fill_(1.0)
-                self.split.bias.data.fill_(0.0)
-
-        def forward(self, x):
-            if not self.sharpness:
-                gate = (self.split(x) <= 0).float()
-            else:
-                gate = torch.sigmoid(-self.sharpness * self.split(x))
-
-            left_out = self.left(x) * gate
-            right_out = self.right(x) * (1 - gate)
-
-            return left_out + right_out
-
     class CopyModule(nn.Module):
         def __init__(self, input_dim):
             super().__init__()
@@ -1943,20 +1908,10 @@ plt.show()
             else:
                 return torch.cat(list(x))
 
-    def learner(self, i, open_model, loss_fn, optim, n_epochs):
+    def learner(self, i, open_model, loss_fn, optim, n_epochs, x, y, x_test, y_test):
         # training loop for the synthesized model
-        # Andreas will provide a dataloader for training data and test data
-        #x, y =  ANDREAS!!!!!!!!!
-        #x_test, y_test = ANDREAS!!!!!!!!!
 
         model = nn.Sequential(self.CopyModule(i), open_model, self.JoinModule())
-
-        true_model = self.TrapezoidNetPure()
-
-        # Generate data is a bit noisy to make it closer to the real world
-        # test data is a little bit out of distribution because we change xmin/xmax a little bit
-        x, y = generate_data(true_model, xmin=-10, xmax=10, n_samples=1_000, eps=1e-4)
-        x_test, y_test = generate_data(true_model, xmin=-15, xmax=15, n_samples=1_000, eps=1e-4)
 
         # fit model
         optimizer = optim(model)
@@ -2007,14 +1962,15 @@ plt.show()
 
             "adam_optimizer": (lambda o: lambda m: optim.Adam(m.parameters(), lr=o.learning_rate)),
 
-            "learner": (lambda i, o, r, ls, e, l, opt, loss, optimizer, model: self.learner(i, model, loss, optimizer, e)),
+            "learner": (lambda i, o, r, ls, e, l, opt, loss, optimizer, model: lambda x, y, x_test, y_test: self.learner(i, model, loss, optimizer, e, x, y, x_test, y_test)),
         }
 
 
 
 if __name__ == "__main__":
     repo = ODE_DAG_Repository(dimensions=[1,2,3,4], linear_feature_dimensions=[1, 2], sharpness_values=[2],
-                              threshold_values=[0], constant_values=[0, 1, -1], learning_rate_values=[1e-2], n_epoch_values=[10000])
+                              threshold_values=[0], constant_values=[0, 1, -1], learning_rate_values=[1e-2],
+                              n_epoch_values=[10000])
 
     edge = (("swap", 0, 1), 1, 1)
 
@@ -2023,7 +1979,7 @@ if __name__ == "__main__":
             raise ValueError("n must be positive")
         else:
             return (("swap", 0, n), n, n)
-    # 81 terms
+
     target1 = Constructor("DAG",
                           Constructor("input", Literal(1))
                           & Constructor("output", Literal(1))
@@ -2143,8 +2099,55 @@ if __name__ == "__main__":
 
     print(f"number of terms: {len(terms_list)}")
 
+    class TrapezoidNetPure(nn.Module):
+        def __init__(self, random_weights=False, sharpness=None):
+            super().__init__()
+
+            self.split = nn.Linear(1, 1, bias=True)
+            self.left = nn.Linear(1, 1, bias=True)
+            self.right = nn.Linear(1, 1, bias=True)
+            self.sharpness = sharpness
+
+            if not random_weights:
+                with torch.no_grad():
+                    # For left branch (x <= 0): we want output = x + 10
+                    # So left(x) = x + 10 => weight = 1, bias = 10
+                    self.left.weight.data.fill_(1.0)
+                    self.left.bias.data.fill_(10.0)
+
+                    # For right branch (x > 0): we want output = 10 - x
+                    # So right(x) = 10 - x => weight = -1, bias = 10
+                    self.right.weight.data.fill_(-1.0)
+                    self.right.bias.data.fill_(10.0)
+
+                self.split.weight.data.fill_(1.0)
+                self.split.bias.data.fill_(0.0)
+
+        def forward(self, x):
+            if not self.sharpness:
+                gate = (self.split(x) <= 0).float()
+            else:
+                gate = torch.sigmoid(-self.sharpness * self.split(x))
+
+            left_out = self.left(x) * gate
+            right_out = self.right(x) * (1 - gate)
+
+            return left_out + right_out
+
+
+    true_model = TrapezoidNetPure()
+
+    # Generate data is a bit noisy to make it closer to the real world
+    # test data is a little bit out of distribution because we change xmin/xmax a little bit
+    x, y = generate_data(true_model, xmin=-10, xmax=10, n_samples=1_000, eps=1e-4)
+    x_test, y_test = generate_data(true_model, xmin=-15, xmax=15, n_samples=1_000, eps=1e-4)
+
+    def f_obj(t):
+        learner = t.interpret(repo.pytorch_function_algebra())
+        return learner(x, y, x_test, y_test)
+
     for t in terms_list:
         print(t.interpret(repo.pytorch_code_algebra()))
-        loss = t.interpret(repo.pytorch_function_algebra())
-        print("Test Loss: " + str(loss))
+        learner = t.interpret(repo.pytorch_function_algebra())
+        print("Test Loss: " + str(learner(x, y, x_test, y_test)))
 

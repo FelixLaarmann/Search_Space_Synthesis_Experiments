@@ -168,6 +168,8 @@ if __name__ == "__main__":
 
     term = terms_list[0]
 
+    plot_term(term)
+
     print(target)
 
     print(f"number of terms: {len(terms_list)}")
@@ -179,7 +181,7 @@ if __name__ == "__main__":
     kernel_fit = WeisfeilerLehmanKernel(n_iter=2, to_grakel_graph=to_grakel_graph)
     kernel = WeisfeilerLehmanKernel(n_iter=1, to_grakel_graph=to_grakel_graph_AB)
 
-    """
+
     # Plot the kernel matrix for the first 10 terms
     L_small = [t.interpret(repo.pretty_term_algebra()) for t in terms_list[:10]]
 
@@ -193,7 +195,7 @@ if __name__ == "__main__":
     plt.yticks(np.arange(len(X_small)), L_small)
     plt.title("Term similarity under the kernel")
     plt.show()
-    """
+
 
     def f_obj(t):
         return kernel_fit._f(term, t)
