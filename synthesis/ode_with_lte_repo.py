@@ -10,7 +10,7 @@ import torch.optim as optim
 
 from synthesis.utils import generate_data
 
-class ODE_DAG_Repository:
+class ODE_Trapezoid_Repository:
     """
             The terms have to be in normal form under the following term rewriting system:
 
@@ -135,32 +135,32 @@ class ODE_DAG_Repository:
         def iter_linear(self):
             for in_f in self.linear_feature_dimensions:
                 for out_f in self.linear_feature_dimensions:
-                    yield ODE_DAG_Repository.Linear(in_features=in_f, out_features=out_f, bias=True)
-                    yield ODE_DAG_Repository.Linear(in_features=in_f, out_features=out_f, bias=False)
+                    yield ODE_Trapezoid_Repository.Linear(in_features=in_f, out_features=out_f, bias=True)
+                    yield ODE_Trapezoid_Repository.Linear(in_features=in_f, out_features=out_f, bias=False)
 
         def iter_sigmoid(self):
-            yield ODE_DAG_Repository.Sigmoid()
+            yield ODE_Trapezoid_Repository.Sigmoid()
 
         def iter_relu(self):
-            yield ODE_DAG_Repository.ReLu(inplace=False)
-            yield ODE_DAG_Repository.ReLu(inplace=True)
+            yield ODE_Trapezoid_Repository.ReLu(inplace=False)
+            yield ODE_Trapezoid_Repository.ReLu(inplace=True)
 
         def iter_sharpness_sigmoid(self):
             for sharpness in self.sharpness_values:
-                yield ODE_DAG_Repository.Sharpness_Sigmoid(sharpness=sharpness)
+                yield ODE_Trapezoid_Repository.Sharpness_Sigmoid(sharpness=sharpness)
 
         def iter_lte(self):
             for threshold in self.threshold_values:
-                yield ODE_DAG_Repository.LTE(threshold=threshold)
+                yield ODE_Trapezoid_Repository.LTE(threshold=threshold)
 
         def iter_sum(self):
             for c in self.constant_values:
-                yield ODE_DAG_Repository.Sum(c)
+                yield ODE_Trapezoid_Repository.Sum(c)
 
         def iter_product(self):
             for c in self.constant_values:
                 if c != 0:
-                    yield ODE_DAG_Repository.Product(c)
+                    yield ODE_Trapezoid_Repository.Product(c)
 
         def __iter__(self):
             yield from self.iter_linear()
@@ -172,21 +172,21 @@ class ODE_DAG_Repository:
             yield from self.iter_product()
 
         def __contains__(self, item):
-            if isinstance(item, ODE_DAG_Repository.Linear):
+            if isinstance(item, ODE_Trapezoid_Repository.Linear):
                 return ((item.in_features in self.linear_feature_dimensions) and
                         (item.out_features in self.linear_feature_dimensions) and
                         (isinstance(item.bias, bool)))
-            elif isinstance(item, ODE_DAG_Repository.Sigmoid):
+            elif isinstance(item, ODE_Trapezoid_Repository.Sigmoid):
                 return True
-            elif isinstance(item, ODE_DAG_Repository.ReLu):
+            elif isinstance(item, ODE_Trapezoid_Repository.ReLu):
                 return isinstance(item.inplace, bool)
-            elif isinstance(item, ODE_DAG_Repository.Sharpness_Sigmoid):
+            elif isinstance(item, ODE_Trapezoid_Repository.Sharpness_Sigmoid):
                 return item.sharpness in self.sharpness_values
-            elif isinstance(item, ODE_DAG_Repository.LTE):
+            elif isinstance(item, ODE_Trapezoid_Repository.LTE):
                 return item.threshold in self.threshold_values
-            elif isinstance(item, ODE_DAG_Repository.Sum):
+            elif isinstance(item, ODE_Trapezoid_Repository.Sum):
                 return item.with_constant in self.constant_values
-            elif isinstance(item, ODE_DAG_Repository.Product):
+            elif isinstance(item, ODE_Trapezoid_Repository.Product):
                 return item.with_constant in self.constant_values and item.with_constant != 0
             else:
                 return False
@@ -202,12 +202,12 @@ class ODE_DAG_Repository:
             pass
 
         def __iter__(self):
-            yield ODE_DAG_Repository.MSEloss(reduction="mean")
-            yield ODE_DAG_Repository.MSEloss(reduction="sum")
-            yield ODE_DAG_Repository.MSEloss(reduction="none")
+            yield ODE_Trapezoid_Repository.MSEloss(reduction="mean")
+            yield ODE_Trapezoid_Repository.MSEloss(reduction="sum")
+            yield ODE_Trapezoid_Repository.MSEloss(reduction="none")
 
         def __contains__(self, value):
-            return (isinstance(value, ODE_DAG_Repository.MSEloss) and (value.reduction in ["mean", "sum", "none"]))
+            return (isinstance(value, ODE_Trapezoid_Repository.MSEloss) and (value.reduction in ["mean", "sum", "none"]))
 
     @dataclass(frozen=True)
     class Adam:
@@ -229,10 +229,10 @@ class ODE_DAG_Repository:
 
         def __iter__(self):
             for lr in self.learning_rate_values:
-                yield ODE_DAG_Repository.Adam(learning_rate=lr)
+                yield ODE_Trapezoid_Repository.Adam(learning_rate=lr)
 
         def __contains__(self, value):
-            return (isinstance(value, ODE_DAG_Repository.Adam) and (value.learning_rate in self.learning_rate_values))
+            return (isinstance(value, ODE_Trapezoid_Repository.Adam) and (value.learning_rate in self.learning_rate_values))
 
     class Para(Group):
         name = "Para"
@@ -1594,6 +1594,13 @@ Learner(
 """)
         }
 
+    def edgelist_learner(self, model, loss, optimizer, epochs):
+        f, inputs = model
+        edgelist, to_outputs, pos_A = f((-3.8, -3.8), ["input" for _ in range(0, inputs)])
+        edgelist = edgelist + [(o, loss) for o in to_outputs] + [(loss, optimizer)] + [(optimizer, f"epochs({epochs})")]
+        return edgelist
+
+
     def edgelist_algebra(self):
         return {
             "edges": (lambda io, para1, para2, para3, para4, para5, para6, para7, para8, para9, para10, para11, para12, para13, para14, para15, para16: lambda id, inputs: ([], inputs, {})),
@@ -1639,10 +1646,18 @@ Learner(
             "before_singleton": (lambda i, o, r, ls, ls1, x: (x, i)),
 
             "before_cons": (lambda i, j, o, r, ls, head, tail, x, y: (lambda id, inputs:
-                                                                      (y[0]((id[0] + 2.5, id[1]), x(id, inputs)[1])[0] + x(id, inputs)[0],
-                                                                       y[0]((id[0] + 2.5, id[1]), x(id, inputs)[1])[1],
-                                                                       y[0]((id[0] + 2.5, id[1]), x(id, inputs)[1])[2] | x(id, inputs)[2]),
-                                                                      i)),
+                                                                      (
+                                                                           y[0]((id[0] + 2.5, id[1]), x(id, inputs)[1])[0] + x(id, inputs)[0],
+                                                                           y[0]((id[0] + 2.5, id[1]), x(id, inputs)[1])[1],
+                                                                           y[0]((id[0] + 2.5, id[1]), x(id, inputs)[1])[2] | x(id, inputs)[2]
+                                                                       ),
+                                                                       i)),
+
+            "mse_loss": (lambda l: str(l)),
+
+            "adam_optimizer": (lambda o: str(o)),
+
+            "learner": (lambda i, o, r, ls, e, l, opt, loss, optimizer, model: self.edgelist_learner(model, loss, optimizer, e))
         }
 
     def pytorch_code_algebra(self):
@@ -1913,14 +1928,16 @@ plt.show()
 
         model = nn.Sequential(self.CopyModule(i), open_model, self.JoinModule())
 
-        # fit model
-        optimizer = optim(model)
-        for _ in range(n_epochs):
-            optimizer.zero_grad()
-            pred = model(x).ravel()
-            loss = loss_fn(pred, y)
-            loss.backward()
-            optimizer.step()
+        if len(model._parameters) > 0:
+
+            # fit model
+            optimizer = optim(model)
+            for _ in range(n_epochs):
+                optimizer.zero_grad()
+                pred = model(x).ravel()
+                loss = loss_fn(pred, y)
+                loss.backward()
+                optimizer.step()
 
         with torch.inference_mode():
             y_pred = model(x_test).ravel()
@@ -1968,9 +1985,9 @@ plt.show()
 
 
 if __name__ == "__main__":
-    repo = ODE_DAG_Repository(dimensions=[1,2,3,4], linear_feature_dimensions=[1, 2], sharpness_values=[2],
-                              threshold_values=[0], constant_values=[0, 1, -1], learning_rate_values=[1e-2],
-                              n_epoch_values=[10000])
+    repo = ODE_Trapezoid_Repository(dimensions=[1, 2, 3, 4], linear_feature_dimensions=[1,], sharpness_values=[2],
+                                    threshold_values=[0], constant_values=[0, 1, -1], learning_rate_values=[1e-2],
+                                    n_epoch_values=[10000])
 
     edge = (("swap", 0, 1), 1, 1)
 
@@ -2080,14 +2097,53 @@ if __name__ == "__main__":
                                       (repo.Linear(1, 1, True), 1, 1),),)
                           )))
 
-    target = target_trapezoid
+    target_from_trapezoid3 = Constructor("Learner", Constructor("DAG",
+                                                                Constructor("input", Literal(3))
+                                                                & Constructor("output", Literal(1))
+                                                                & Constructor("structure", Literal(
+                                                                    (
+                                                                        (
+                                                                            (None, 1, 1),
+                                                                            (None, 1, 1),
+                                                                            (None, 1, 1)
+                                                                        ),  # left, split, right
+                                                                        (
+                                                                            edge,
+                                                                            (None, 1, 2),
+                                                                            edge
+                                                                        ),  # left, gate, right
+                                                                        (
+                                                                            (None, 2, 1),
+                                                                            (None, 1, 1),
+                                                                            edge
+                                                                        ),  # left_out, -gate, right
+                                                                        (
+                                                                            edge,
+                                                                            (None, 1, 1),
+                                                                            edge
+                                                                        ),  # left_out, 1-gate, right
+                                                                        (
+                                                                            edge,
+                                                                            (None, 2, 1)
+                                                                        ),  # left_out, right_out
+                                                                        (
+                                                                            (None, 2, 1),
+                                                                        )
+                                                                    )
+                                                                )))
+                                         & Constructor("Loss", Constructor("type", Literal(repo.MSEloss())))
+                                         & Constructor("Optimizer", Constructor("type", Literal(repo.Adam(1e-2))))
+                                         & Constructor("epochs", Literal(10000))
+                                         )
+
+    target = target_from_trapezoid3
 
     synthesizer = SearchSpaceSynthesizer(repo.specification(), {})
 
     search_space = synthesizer.construct_search_space(target).prune()
     print("finish synthesis, start enumerate")
 
-    terms = search_space.enumerate_trees(target, 10)
+    terms = search_space.sample(10, target)
 
     print("enumeration finished")
 
@@ -2147,7 +2203,7 @@ if __name__ == "__main__":
         return learner(x, y, x_test, y_test)
 
     for t in terms_list:
-        print(t.interpret(repo.pytorch_code_algebra()))
+        print(t.interpret(repo.pretty_term_algebra()))
         learner = t.interpret(repo.pytorch_function_algebra())
         print("Test Loss: " + str(learner(x, y, x_test, y_test)))
 
