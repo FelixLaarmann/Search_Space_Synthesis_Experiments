@@ -275,12 +275,20 @@ if __name__ == "__main__":
             return left_out + right_out
 
 
-    true_model = TrapezoidNetPure()
+    # true_model = TrapezoidNetPure()
 
     # Generate data is a bit noisy to make it closer to the real world
     # test data is a little bit out of distribution because we change xmin/xmax a little bit
-    x, y = generate_data(true_model, xmin=-10, xmax=10, n_samples=1_000, eps=1e-4)
-    x_test, y_test = generate_data(true_model, xmin=-15, xmax=15, n_samples=1_000, eps=1e-4)
+    #x, y = generate_data(true_model, xmin=-10, xmax=10, n_samples=1_000, eps=1e-4)
+    #x_test, y_test = generate_data(true_model, xmin=-15, xmax=15, n_samples=1_000, eps=1e-4)
+
+    # Load pre generated data for the training
+    data = torch.load('data/TrapezoidNet.pth')
+    x = data['x_train']
+    y = data['y_train']
+    x_test = data['x_test']
+    y_test = data['y_test']
+
 
     def f_obj(t):
         learner = t.interpret(repo.pytorch_function_algebra())
