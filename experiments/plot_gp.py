@@ -1,6 +1,6 @@
 from synthesis.labeled_dag import Labeled_DAG_Repository
 from cl3s import (Constructor, Literal, SearchSpaceSynthesizer)
-from cl3s import WeisfeilerLehmanKernel
+from cl3s import WeisfeilerLehmanKernel, HierarchicalWeisfeilerLehmanKernel
 from cl3s import ExpectedImprovement
 
 from grakel.utils import graph_from_networkx
@@ -12,6 +12,8 @@ from itertools import accumulate
 import numpy as np
 
 from sklearn.gaussian_process import GaussianProcessRegressor
+
+import re
 
 label = ["A", "B", "C"]
 
@@ -25,10 +27,7 @@ def plot_term(t):
     G = nx.MultiDiGraph()
     G.add_edges_from(edgelist)
 
-    relabel = {n: ("A" if "A" in n
-                   else "B" if "B" in n
-                   else "C" if "C" in n
-                   else n)
+    relabel = {n: re.sub("[)][(][-]*[0-9]*[.][0-9]*[,]\s[-]*[0-9]*[.][0-9]*[)]", ")", n)
                for n in G.nodes()}
 
     for n in G.nodes():
@@ -47,7 +46,26 @@ def plot_term(t):
 
     plt.show()
 
-def to_grakel_graph(t):
+
+def to_grakel_graph_1(t):
+    f, inputs = t.interpret(repo.edgelist_algebra())
+    edgelist, to_outputs, pos_A = f((-3.8, -3.8), ["input" for _ in range(0, inputs)])
+    edgelist = edgelist + [(o, "output") for o in to_outputs]
+
+    G = nx.MultiDiGraph()
+    G.add_edges_from(edgelist)
+
+    relabel = {n: "Node"
+               for n in G.nodes()}
+
+    for n in G.nodes():
+        G.nodes[n]['symbol'] = relabel[n]
+
+    gk_graph = graph_from_networkx([G.to_undirected()], node_labels_tag='symbol')
+
+    return gk_graph
+
+def to_grakel_graph_2(t):
     f, inputs = t.interpret(repo.edgelist_algebra())
     edgelist, to_outputs, pos_A = f((-3.8, -3.8), ["input" for _ in range(0, inputs)])
     edgelist = edgelist + [(o, "output") for o in to_outputs]
@@ -57,8 +75,8 @@ def to_grakel_graph(t):
 
     relabel = {n: ("A" if "A" in n
                    else "B" if "B" in n
-                   else "C" if "C" in n
-                   else n)
+                    else "C" if "C" in n
+                    else n)
                for n in G.nodes()}
 
     for n in G.nodes():
@@ -68,7 +86,7 @@ def to_grakel_graph(t):
 
     return gk_graph
 
-def to_grakel_graph_AB(t):
+def to_grakel_graph_3(t):
     f, inputs = t.interpret(repo.edgelist_algebra())
     edgelist, to_outputs, pos_A = f((-3.8, -3.8), ["input" for _ in range(0, inputs)])
     edgelist = edgelist + [(o, "output") for o in to_outputs]
@@ -76,28 +94,9 @@ def to_grakel_graph_AB(t):
     G = nx.MultiDiGraph()
     G.add_edges_from(edgelist)
 
-    relabel = {n: ("AB" if "A" in n
-                   else "AB" if "B" in n
-                   else "C" if "C" in n
-                   else n)
+    relabel = {n: re.sub("[)][(][-]*[0-9]*[.][0-9]*[,]\s[-]*[0-9]*[.][0-9]*[)]", ")", n)
                for n in G.nodes()}
 
-    for n in G.nodes():
-        G.nodes[n]['symbol'] = relabel[n]
-
-    gk_graph = graph_from_networkx([G.to_undirected()], node_labels_tag='symbol')
-
-    return gk_graph
-
-def to_grakel_graph_A(t):
-    f, inputs = t.interpret(repo.edgelist_algebra())
-    edgelist, to_outputs, pos_A = f((-3.8, -3.8), ["input" for _ in range(0, inputs)])
-    edgelist = edgelist + [(o, "output") for o in to_outputs]
-
-    G = nx.MultiDiGraph()
-    G.add_edges_from(edgelist)
-
-    relabel = {n: "A" for n in G.nodes()}
 
     for n in G.nodes():
         G.nodes[n]['symbol'] = relabel[n]
@@ -158,7 +157,7 @@ if __name__ == "__main__":
     search_space = synthesizer.construct_search_space(target).prune()
     print("finish synthesis, start enumerate")
 
-    terms = search_space.enumerate_trees(target, 3000)
+    terms = search_space.enumerate_trees(target, 150)
 
     print("enumeration finished")
 
@@ -178,10 +177,12 @@ if __name__ == "__main__":
         print(t.interpret(repo.pretty_term_algebra()))
     """
 
-    kernel_fit = WeisfeilerLehmanKernel(n_iter=2, to_grakel_graph=to_grakel_graph)
-    kernel = WeisfeilerLehmanKernel(n_iter=1, to_grakel_graph=to_grakel_graph_AB)
+    kernel_fit = WeisfeilerLehmanKernel(n_iter=1, to_grakel_graph=to_grakel_graph_3)
+    kernel = WeisfeilerLehmanKernel(n_iter=1, to_grakel_graph=to_grakel_graph_1)
+    kernel2 = WeisfeilerLehmanKernel(n_iter=1, to_grakel_graph=to_grakel_graph_2)
+    h_kernel = HierarchicalWeisfeilerLehmanKernel([to_grakel_graph_1, to_grakel_graph_2, to_grakel_graph_3], [0.1, 0.5, 0.4], [1, 1, 1])
 
-
+    """
     # Plot the kernel matrix for the first 10 terms
     L_small = [t.interpret(repo.pretty_term_algebra()) for t in terms_list[:10]]
 
@@ -195,7 +196,7 @@ if __name__ == "__main__":
     plt.yticks(np.arange(len(X_small)), L_small)
     plt.title("Term similarity under the kernel")
     plt.show()
-
+    """
 
     def f_obj(t):
         return kernel_fit._f(term, t)
@@ -214,9 +215,40 @@ if __name__ == "__main__":
     plt.imshow(np.diag(D ** -0.5).dot(K).dot(np.diag(D ** -0.5)))
     plt.xticks(np.arange(len(X)), L)
     plt.yticks(np.arange(len(X)), L)
-    plt.title("Term similarity under the kernel")
+    plt.title("Term similarity under the kernel1")
     plt.show()
 
+    K = kernel2(X)
+    D = kernel2.diag(X)
+
+    plt.figure(figsize=(8, 5))
+    plt.imshow(np.diag(D ** -0.5).dot(K).dot(np.diag(D ** -0.5)))
+    plt.xticks(np.arange(len(X)), L)
+    plt.yticks(np.arange(len(X)), L)
+    plt.title("Term similarity under the kernel2")
+    plt.show()
+
+    K = kernel_fit(X)
+    D = kernel_fit.diag(X)
+
+    plt.figure(figsize=(8, 5))
+    plt.imshow(np.diag(D ** -0.5).dot(K).dot(np.diag(D ** -0.5)))
+    plt.xticks(np.arange(len(X)), L)
+    plt.yticks(np.arange(len(X)), L)
+    plt.title("Term similarity under the kernel3")
+    plt.show()
+
+    K = h_kernel(X)
+    D = h_kernel.diag(X)
+
+    plt.figure(figsize=(8, 5))
+    plt.imshow(np.diag(D ** -0.5).dot(K).dot(np.diag(D ** -0.5)))
+    plt.xticks(np.arange(len(X)), L)
+    plt.yticks(np.arange(len(X)), L)
+    plt.title("Term similarity under the h_kernel")
+    plt.show()
+
+    """
     plt.plot(L, y, linestyle="dotted")
     plt.xlabel("$t$")
     plt.ylabel("$f obj(t)$")
@@ -265,3 +297,5 @@ if __name__ == "__main__":
     plt.ylabel("$f obj(t)$")
     _ = plt.title("Gaussian process regression on search space with confidence interval")
     plt.show()
+    
+    """

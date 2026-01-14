@@ -13,7 +13,7 @@ from grakel.utils import graph_from_networkx
 
 import networkx as nx
 
-from synthesis.ode_with_lte_repo import ODE_Trapezoid_Repository
+from synthesis.old_ode_repo import ODE_Trapezoid_Repository
 
 repo_lte = ODE_Trapezoid_Repository(dimensions=[1, 2, 3, 4], linear_feature_dimensions=[1,], sharpness_values=[2],
                                     threshold_values=[0], constant_values=[0, 1, -1], learning_rate_values=[1e-2],
