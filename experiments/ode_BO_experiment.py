@@ -8,6 +8,7 @@ import torch.optim as optim
 from synthesis.utils import generate_data
 
 import re
+import time 
 
 from grakel.utils import graph_from_networkx
 
@@ -290,15 +291,18 @@ if __name__ == "__main__":
     y_test = data['y_test']
 
 
+    start = time.time()
+
     def f_obj(t):
         learner = t.interpret(repo.pytorch_function_algebra())
         return learner(x, y, x_test, y_test)
 
     best_tree, X, Y = bo.bayesian_optimisation(inputs["init_sample_size"], f_obj,
                                                n_pre_samples=inputs["init_sample_size"], greater_is_better=False) # minimize f_obj
-
+    end = time.time()
     print("Best tree found:")
     print(best_tree.interpret(repo.pretty_term_algebra()))
     print("The following data was generated:")
     for x, y in zip(X, Y):
         print(f"Tree: {x.interpret(repo.pretty_term_algebra())}, Test Loss: {y}")
+    print(f'Elapsed Time: {end - start}')
