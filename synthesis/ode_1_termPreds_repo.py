@@ -10,7 +10,6 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
-from experiments.ode_BO_experiment import target_from_trapezoid2
 from synthesis.utils import generate_data
 
 class ODE_1_Repository:
@@ -84,11 +83,10 @@ class ODE_1_Repository:
             in sequential compositions.
     """
 
-    def __init__(self, #dimensions,
-                 linear_feature_dimensions, constant_values, learning_rate_values,
+    def __init__(self, dimensions, linear_feature_dimensions, constant_values, learning_rate_values,
                  n_epoch_values):
         # additionally to labeled nodes, we have (unlabelled) edges, that needs to be handled additionally
-        self.dimensions = range(1, max(linear_feature_dimensions) + 1)
+        self.dimensions = dimensions
         self.linear_feature_dimensions = linear_feature_dimensions
         self.learning_rate_values = learning_rate_values
         self.n_epoch_values = n_epoch_values
@@ -120,15 +118,10 @@ class ODE_1_Repository:
     class Product:
         with_constant: float = 1
 
-    @dataclass(frozen=True)
-    class Copy:
-        out_dimension: int
-
     class Label(Group):
         name = "Label"
 
-        def __init__(self, dimensions,
-                     linear_feature_dimensions, constant_values):
+        def __init__(self, dimensions, linear_feature_dimensions, constant_values):
             self.dimensions = dimensions
             self.linear_feature_dimensions = linear_feature_dimensions
             self.constant_values = constant_values
@@ -158,10 +151,6 @@ class ODE_1_Repository:
                 if c != 0:
                     yield ODE_1_Repository.Product(c)
 
-        def iter_copy(self):
-            for o in self.dimensions:
-                yield ODE_1_Repository.Copy(out_dimension=o)
-
         def __iter__(self):
             yield from self.iter_linear()
             yield from self.iter_sigmoid()
@@ -169,7 +158,6 @@ class ODE_1_Repository:
             yield from self.iter_tanh()
             yield from self.iter_sum()
             yield from self.iter_product()
-            yield from self.iter_copy()
 
         def __contains__(self, item):
             if isinstance(item, ODE_1_Repository.Linear):
@@ -186,8 +174,6 @@ class ODE_1_Repository:
                 return item.with_constant in self.constant_values
             elif isinstance(item, ODE_1_Repository.Product):
                 return item.with_constant in self.constant_values and item.with_constant != 0
-            if isinstance(item, ODE_1_Repository.Copy):
-                return item.out_dimension in self.dimensions
             else:
                 return False
 
@@ -848,7 +834,7 @@ class ODE_1_Repository:
                 right_beside = right_term.children[4]
                 right_beside_root = right_beside.root
                 if right_beside_root == "swap":
-                    if len(right_beside.children) != 19:
+                    if len(right_beside.children) != 4:
                         raise ValueError("Derivation trees have not the expected shape.")
                     right_n = right_beside.children[1]
                     right_m = right_beside.children[2]
@@ -953,6 +939,86 @@ class ODE_1_Repository:
                             return False
         return True
 
+    def dag_constraint(self, head: DerivationTree[Any, str, Any], tail: DerivationTree[Any, str, Any], i : int) -> bool:
+        x = head.interpret(self.edgelist_algebra())
+        y = tail.interpret(self.edgelist_algebra())
+        id = (0,0)
+        inputs = ["input" for _ in range(0,i)]
+        edgelist = y[0]((id[0] + 2.5, id[1]), x(id, inputs)[1])[0]
+        edgeset = set(edgelist)
+        return len(edgelist) == len(edgeset)
+
+    def linear_layer_constraint(self, head: DerivationTree[Any, str, Any], tail: DerivationTree[Any, str, Any], i : int) -> bool:
+        x = head.interpret(self.edgelist_algebra())
+        y = tail.interpret(self.edgelist_algebra())
+        id = (0,0)
+        inputs = ["input" for _ in range(0,i)]
+        edgelist =  y[0]((id[0] + 2.5, id[1]), x(id, inputs)[1])[0] + x(id, inputs)[0]
+        to_outputs = y[0]((id[0] + 2.5, id[1]), x(id, inputs)[1])[1]
+        edgelist = edgelist + [(o, "output") for o in to_outputs]
+        G = nx.MultiDiGraph(edgelist)
+        P = nx.all_simple_edge_paths(G, "input", "output")
+        linear_paths = []
+        for path in P:
+            only_linears = []
+            for l, r, k in path:
+                if ("Linear" in l or "Linear" in r):
+                    only_linears.append((l, r))
+            linear_paths.append(only_linears)
+        for path in linear_paths:
+            test = list(zip(path, path[1:]))
+            for (l, r), (l2, r2) in test:
+                if "Linear" in l and "Linear" in r:
+                    if "out_features=" in l and "in_features=" in r:
+                        l_out = (l.partition("out_features=")[-1]).partition(",")[0]
+                        r_in = (r.partition("in_features=")[-1]).partition(",")[0]
+                        if l_out != r_in:
+                            return False
+                if r != l2 and "Linear" in r and "Linear" in l2:
+                    if "out_features=" in r and "in_features=" in l2:
+                        l_out = (r.partition("out_features=")[-1]).partition(",")[0]
+                        r_in = (l2.partition("in_features=")[-1]).partition(",")[0]
+                        if l_out != r_in:
+                            return False
+        return True
+
+    def model_constraint(self, dim_in: int, dim_out: int, model: DerivationTree[Any, str, Any]):
+        f, inputs = model.interpret(self.edgelist_algebra())
+        edgelist, to_outputs, pos_A = f((-3.8, -3.8), ["input" for _ in range(0, inputs)])
+        edgelist = edgelist + [(o, "output") for o in to_outputs]
+        G = nx.MultiDiGraph(edgelist)
+        P = nx.all_simple_edge_paths(G, "input", "output")
+        linear_paths = []
+        for path in P:
+            only_linears = []
+            for l, r, k in path:
+                if "input" in l or "Linear" in l or "Linear" in r or "output" in r:
+                    only_linears.append((l, r))
+            linear_paths.append(only_linears)
+        for path in linear_paths:
+            test = list(zip(path, path[1:]))
+            for (l, r), (l2, r2) in test:
+                if "input" in l and "Linear" in r:
+                    if "in_features=" in r:
+                        r_in = (r.partition("in_features=")[-1]).partition(",")[0]
+                        if str(dim_in) != r_in:
+                            return False
+                if "input" in l and "Linear" in r2:
+                    if "in_features=" in r2:
+                        r_in = (r2.partition("in_features=")[-1]).partition(",")[0]
+                        if (str(dim_in) != r_in):
+                            return False
+                if "Linear" in l2 and "output" in r2:
+                    if "out_features=" in l2:
+                        l_out = (l2.partition("out_features=")[-1]).partition(",")[0]
+                        if (l_out != str(dim_out)):
+                            return False
+                if "Linear" in l and "output" in r2:
+                    if "out_features=" in l:
+                        l_out = (l.partition("out_features=")[-1]).partition(",")[0]
+                        if (l_out != str(dim_out)):
+                            return False
+        return True
 
     def specification(self):
         labels = self.Label(self.dimensions, self.linear_feature_dimensions, self.constant_values)
@@ -1066,8 +1132,8 @@ class ODE_1_Repository:
 
             "linear_layer": SpecificationBuilder()
             .parameter("l", labels, lambda v: list(labels.iter_linear()))
-            .parameter("i", dimension, lambda v: [v["l"].in_features])
-            .parameter("o", dimension, lambda v: [v["l"].out_features])
+            .parameter("i", dimension, lambda v: [1])
+            .parameter("o", dimension)
             .parameter("para1", para_labels, lambda v: [(v["l"], v["i"], v["o"])])
             .parameter("para2", para_labels, lambda v: [(v["l"], v["i"], None)])
             .parameter("para3", para_labels, lambda v: [(v["l"], None, v["o"])])
@@ -1094,8 +1160,8 @@ class ODE_1_Repository:
 
             "sigmoid": SpecificationBuilder()
             .parameter("l", labels, lambda v: list(labels.iter_sigmoid()))
-            .parameter("i", dimension)
-            .parameter("o", dimension, lambda v: [v["i"]])
+            .parameter("i", dimension, lambda v: [1])
+            .parameter("o", dimension)
             .parameter("para1", para_labels, lambda v: [(v["l"], v["i"], v["o"])])
             .parameter("para2", para_labels, lambda v: [(v["l"], v["i"], None)])
             .parameter("para3", para_labels, lambda v: [(v["l"], None, v["o"])])
@@ -1122,8 +1188,8 @@ class ODE_1_Repository:
 
             "relu": SpecificationBuilder()
             .parameter("l", labels, lambda v: list(labels.iter_relu()))
-            .parameter("i", dimension)
-            .parameter("o", dimension, lambda v: [v["i"]])
+            .parameter("i", dimension, lambda v: [1])
+            .parameter("o", dimension)
             .parameter("para1", para_labels, lambda v: [(v["l"], v["i"], v["o"])])
             .parameter("para2", para_labels, lambda v: [(v["l"], v["i"], None)])
             .parameter("para3", para_labels, lambda v: [(v["l"], None, v["o"])])
@@ -1150,8 +1216,8 @@ class ODE_1_Repository:
 
             "tanh": SpecificationBuilder()
             .parameter("l", labels, lambda v: list(labels.iter_tanh()))
-            .parameter("i", dimension)
-            .parameter("o", dimension, lambda v: [v["i"]])
+            .parameter("i", dimension, lambda v: [1])
+            .parameter("o", dimension)
             .parameter("para1", para_labels, lambda v: [(v["l"], v["i"], v["o"])])
             .parameter("para2", para_labels, lambda v: [(v["l"], v["i"], None)])
             .parameter("para3", para_labels, lambda v: [(v["l"], None, v["o"])])
@@ -1179,7 +1245,7 @@ class ODE_1_Repository:
             "sum": SpecificationBuilder()
             .parameter("l", labels, lambda v: list(labels.iter_sum()))
             .parameter("i", dimension)
-            .parameter("o", dimension, lambda v: [1])
+            .parameter("o", dimension)
             .parameter("para1", para_labels, lambda v: [(v["l"], v["i"], v["o"])])
             .parameter("para2", para_labels, lambda v: [(v["l"], v["i"], None)])
             .parameter("para3", para_labels, lambda v: [(v["l"], None, v["o"])])
@@ -1207,7 +1273,7 @@ class ODE_1_Repository:
             "product": SpecificationBuilder()
             .parameter("l", labels, lambda v: list(labels.iter_product()))
             .parameter("i", dimension)
-            .parameter("o", dimension, lambda v: [1])
+            .parameter("o", dimension)
             .parameter("para1", para_labels, lambda v: [(v["l"], v["i"], v["o"])])
             .parameter("para2", para_labels, lambda v: [(v["l"], v["i"], None)])
             .parameter("para3", para_labels, lambda v: [(v["l"], None, v["o"])])
@@ -1228,34 +1294,6 @@ class ODE_1_Repository:
                                 & Constructor("structure", Var("para6"))
                                 & Constructor("structure", Var("para7"))
                                 #& Constructor("structure", Literal("product"))
-                                & Constructor("structure", Literal(None))
-                                ) & Constructor("non_ID")
-                    ),
-
-            "copy": SpecificationBuilder()
-            .parameter("l", labels, lambda v: list(labels.iter_copy()))
-            .parameter("i", dimension, lambda v: [1])
-            .parameter("o", dimension, lambda v: [v["l"].out_dimension])
-            .parameter("para1", para_labels, lambda v: [(v["l"], v["i"], v["o"])])
-            .parameter("para2", para_labels, lambda v: [(v["l"], v["i"], None)])
-            .parameter("para3", para_labels, lambda v: [(v["l"], None, v["o"])])
-            .parameter("para4", para_labels, lambda v: [(None, v["i"], v["o"])])
-            .parameter("para5", para_labels, lambda v: [(v["l"], None, None)])
-            .parameter("para6", para_labels, lambda v: [(None, None, v["o"])])
-            .parameter("para7", para_labels, lambda v: [(None, v["i"], None)])
-            .suffix(Constructor("DAG_component",
-                                Constructor("input", Var("i"))
-                                & Constructor("input", Literal(None))
-                                & Constructor("output", Var("o"))
-                                & Constructor("output", Literal(None))
-                                & Constructor("structure", Var("para1"))
-                                & Constructor("structure", Var("para2"))
-                                & Constructor("structure", Var("para3"))
-                                & Constructor("structure", Var("para4"))
-                                & Constructor("structure", Var("para5"))
-                                & Constructor("structure", Var("para6"))
-                                & Constructor("structure", Var("para7"))
-                                # & Constructor("structure", Literal("product"))
                                 & Constructor("structure", Literal(None))
                                 ) & Constructor("non_ID")
                     ),
@@ -1495,6 +1533,8 @@ class ODE_1_Repository:
             .constraint(lambda v: self.swaplaw2(v["x"], v["y"]))
             .constraint(lambda v: self.swaplaw3(v["x"], v["y"]))
             .constraint(lambda v: self.swaplaw4(v["x"], v["y"]))
+            .constraint(lambda v: self.dag_constraint(v["x"], v["y"], v["i"])) # DAG: At most one edge between any two nodes
+            .constraint(lambda v: self.linear_layer_constraint(v["x"], v["y"], v["i"]))
             .suffix(Constructor("DAG",
                                 Constructor("input", Var("i"))
                                 & Constructor("input", Literal(None))
@@ -1517,6 +1557,8 @@ class ODE_1_Repository:
             "learner": SpecificationBuilder()
             .parameter("i", dimension_with_None)
             .parameter("o", dimension_with_None)
+            .parameter("dim_in", feature_dimension)
+            .parameter("dim_out", feature_dimension)
             .parameter("request", paratupletuples)
             .parameter("ls", paratupletuples, lambda v: [paratupletuples.normalize(v["request"])])
             .parameter("epochs", epochs)
@@ -1528,11 +1570,14 @@ class ODE_1_Repository:
                                            Constructor("input", Var("i"))
                                            & Constructor("output", Var("o"))
                                            & Constructor("structure", Var("ls"))))
+            .constraint(lambda v: self.model_constraint(v["dim_in"], v["dim_out"], v["model"]))
             .suffix(Constructor("Learner", Constructor("DAG",
                                                        Constructor("input", Var("i"))
                                                        & Constructor("output", Var("o"))
                                                        & Constructor("structure", Var("request"))
                                                        )
+                                & Constructor("DataDimension", Constructor("input", Var("dim_in"))
+                                                                           & Constructor("output", Var("dim_out")))
                                 & Constructor("Loss", Constructor("type", Var("loss")))
                                 & Constructor("Optimizer", Constructor("type", Var("opti")))
                                 & Constructor("epochs", Var("epochs"))
@@ -1560,8 +1605,6 @@ class ODE_1_Repository:
 
             "product": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: f"({str(l)}, {i}, {o})"),
 
-            "copy": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: f"({str(l)}, {i}, {o})"),
-
             "beside_singleton": (lambda i, o, ls, para, x: f"{x})"),
 
             "beside_cons": (lambda i, i1, i2, o, o1, o2, ls, head, tail, x, y: f"{x} || {y}"),
@@ -1576,7 +1619,7 @@ class ODE_1_Repository:
 
             "adam_optimizer": (lambda o: str(o)),
 
-            "learner": (lambda i, o, r, ls, e, l, opt, loss, optimizer, model: f"""
+            "learner": (lambda i, o, di, do, r, ls, e, l, opt, loss, optimizer, model: f"""
 Learner(
     model= (
         {model}
@@ -1625,10 +1668,6 @@ Learner(
                 [(x, str((l, i, o)) + str(id)) for x in inputs], [str((l, i, o)) + str(id) for _ in range(0, o)],
                 {str((l, i, o)) + str(id): id})),
 
-            "copy": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: lambda id, inputs: (
-                [(x, str((l, i, o)) + str(id)) for x in inputs], [str((l, i, o)) + str(id) for _ in range(0, o)],
-                {str((l, i, o)) + str(id): id})),
-
             "beside_singleton": (lambda i, o, ls, para, x: x),
 
             "beside_cons": (lambda i, i1, i2, o, o1, o2, ls, head, tail, x, y: lambda id, inputs:
@@ -1652,7 +1691,7 @@ Learner(
 
             "adam_optimizer": (lambda o: str(o)),
 
-            "learner": (lambda i, o, r, ls, e, l, opt, loss, optimizer, model: self.edgelist_learner(model, loss, optimizer, e))
+            "learner": (lambda i, o, di, do, r, ls, e, l, opt, loss, optimizer, model: self.edgelist_learner(model, loss, optimizer, e))
         }
 
     def pytorch_code_algebra(self):
@@ -1661,7 +1700,6 @@ Learner(
         # should be similar to edgelist algebra
         # assume, that x is a vector with the length of the input dimension
         # we need to return a triple of two strings and the output vector (then its really similar to edgelist, yippieh!!!)
-        # TODO: update pytorch code algebra to implementation of pytorch function algebra
         return {
             "edges": (lambda io, para1, para2, para3, para4, para5, para6, para7, para8, para9, para10, para11, para12, para13, para14, para15, para16: lambda id, inputs: (f"""""", f"""""", inputs)),
 
@@ -1699,12 +1737,6 @@ Learner(
         x_{id[0]}_{id[1]}_{k} = {l.with_constant} * {" * ".join(inputs)}
 """ for k in range(o)]), tuple(f"x_{id[0]}_{id[1]}_{k}" for k in range(o)))),
 
-            "copy": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: lambda id, inputs: (f"""""",
-                                                                                                             "\n".join(
-                                                                                                                 [f"""
-                x_{id[0]}_{id[1]}_{k} = {l.with_constant} * {" * ".join(inputs)}
-        """ for k in range(o)]), tuple(f"x_{id[0]}_{id[1]}_{k}" for k in range(o)))),
-
             "beside_singleton": (lambda i, o, ls, para, x: x),
 
             "beside_cons": (lambda i, i1, i2, o, o1, o2, ls, head, tail, x, y: lambda id, inputs: (
@@ -1725,7 +1757,7 @@ Learner(
 
             "adam_optimizer": (lambda o: lambda m: f"optim.Adam({m}.parameters(), lr={o.learning_rate})"),
 
-            "learner": (lambda i, o, r, ls, e, l, opt, loss, optimizer, model: f"""
+            "learner": (lambda i, o, di, do, r, ls, e, l, opt, loss, optimizer, model: f"""
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -1799,35 +1831,23 @@ plt.show()
             return x
 
     class SwapModule(nn.Module):
-        def __init__(self, n: int, m: int):
+        def __init__(self, n, m):
             super().__init__()
             self.n = n
             self.m = m
 
         def forward(self, x):
-            x1, x2 = torch.split(x, self.n, dim=1)
-            if len(x1[1]) != self.n or len(x2[1]) != self.m:
-                raise ValueError(f"Swap Module expected input dimensions ({self.n}, {self.m}), but got ({len(x1[1])}, {len(x2[1])})")
-            return torch.cat((x2, x1), dim=1)
+            return x[self.n:] + x[:self.n]
 
     class SynthLinear(nn.Module):
         def __init__(self, output_dim, in_features, out_features, bias=True):
             super().__init__()
             self.linear = nn.Linear(in_features, out_features, bias)
             self.o = output_dim
-            self.in_features = in_features
 
         def forward(self, x):
-            #if len(x) == 1:
-            #    x = x[0]
-            #else:
-             #   x = torch.cat(x, dim=1)
-            if len(x[1]) != self.in_features:
-                raise ValueError(f"Linear Layer expected {self.in_features} inputs, but got {len(x)}")
-            y = self.linear(x)
-            if len(y[1]) != self.o:
-                raise ValueError(f"Linear Layer expected to produce {self.o} outputs, but got {len(y)}")
-            return y
+            x = self.linear(x[0])  # 1 is the only available input dimension for linear layers
+            return tuple((x for _ in range(self.o)))
 
     class SynthSigmoid(nn.Module):
         def __init__(self, output_dim):
@@ -1836,13 +1856,8 @@ plt.show()
             self.o = output_dim
 
         def forward(self, x):
-            #x = torch.cat(x, dim=1)
-            if len(x[1]) != self.o:
-                raise ValueError(f"Sigmoid expected {self.o} inputs, but got {len(x)}")
-            y = self.sigmoid(x)
-            if len(y[1]) != self.o:
-                raise ValueError(f"Sigmoid expected to produce {self.o} outputs, but got {len(y)}")
-            return y
+            x = self.sigmoid(x[0])
+            return tuple((x for _ in range(self.o)))
 
     class SynthReLU(nn.Module):
         def __init__(self, output_dim, inplace=False):
@@ -1851,13 +1866,8 @@ plt.show()
             self.o = output_dim
 
         def forward(self, x):
-            #x = torch.cat(x, dim=1)
-            if len(x[1]) != self.o:
-                raise ValueError(f"ReLU expected {self.o} inputs, but got {len(x)}")
-            y = self.relu(x)
-            if len(y[1]) != self.o:
-                raise ValueError(f"ReLU expected to produce {self.o} outputs, but got {len(y)}")
-            return y
+            x = self.relu(x[0])
+            return tuple((x for _ in range(self.o)))
 
     class SynthTanh(nn.Module):
         def __init__(self, output_dim):
@@ -1866,13 +1876,8 @@ plt.show()
             self.o = output_dim
 
         def forward(self, x):
-            #x = torch.cat(x, dim=1)
-            if len(x[1]) != self.o:
-                raise ValueError(f"Sigmoid expected {self.o} inputs, but got {len(x)}")
-            y = self.tanh(x)
-            if len(y[1]) != self.o:
-                raise ValueError(f"Sigmoid expected to produce {self.o} outputs, but got {len(y)}")
-            return y
+            x = self.tanh(x[0])
+            return tuple((x for _ in range(self.o)))
 
     class SumModule(nn.Module):
         def __init__(self, output_dim, with_constant):
@@ -1881,10 +1886,10 @@ plt.show()
             self.o = output_dim
 
         def forward(self, x):
-            #x = torch.cat(x, dim=1)
-            x = torch.add(x, self.with_constant)
-            x = torch.sum(x, dim=1, keepdim=True)
-            return x
+            result = self.with_constant
+            for xi in x:
+                result = torch.add(xi, result)
+            return tuple((result for _ in range(self.o)))
 
     class ProductModule(nn.Module):
         def __init__(self, output_dim, with_constant):
@@ -1893,55 +1898,58 @@ plt.show()
             self.o = output_dim
 
         def forward(self, x):
-            #x = torch.cat(x, dim=1)
-            x = torch.mul(x, self.with_constant)
-            x = torch.prod(x, dim=1, keepdim=True)
-            return x
+            result = self.with_constant
+            for xi in x:
+                result = torch.mul(xi, result)
+            return tuple((result for _ in range(self.o)))
 
     class BesideModule(nn.Module):
-        def __init__(self, head, tail, i1: int):
+        def __init__(self, head, tail, i1):
             super().__init__()
             self.head = head
             self.tail = tail
             self.i = i1
 
         def forward(self, x):
-            if self.i == len(x[0]):
-                if self.tail is not None:
-                    raise ValueError("BesideModule: tail is not None, but input dimension matches head dimension")
-                return self.head(x)
-            else:
-                x1, x2 = torch.split(x, [self.i, len(x[1]) - self.i], dim=1)
-                head_out = self.head(x1)
-                tail_out = self.tail(x2)
-                output = torch.cat((head_out, tail_out), dim=1)
-                return output
+            head_out = self.head(x[:self.i])
+            tail_out = self.tail(x[self.i:])
+            output_tuple = head_out + tail_out
+            return output_tuple
 
     class BeforeModule(nn.Module):
         # nn.Sequential basically, but the type of our forward is tuple of tensors -> tuple of tensors, I want to make sure nothing unforeseen happens
         def __init__(self, head, tail):
             super().__init__()
             self.head = head
-            self.tail = tail if tail is not None else lambda x: x  # catch beside singleton
+            self.tail = tail if tail is not None else lambda x: x
 
         def forward(self, x):
-            #x = torch.cat(x, dim=1)
             head_out = self.head(x)
             tail_out = self.tail(head_out)
             return tail_out
 
     class CopyModule(nn.Module):
-        def __init__(self, output_dim):
+        def __init__(self, input_dim):
             super().__init__()
-            self.o = output_dim
+            self.i = input_dim
 
         def forward(self, x):
-            return x.expand(len(x), self.o)
+            return tuple((x for _ in range(self.i)))
+
+    class JoinModule(nn.Module):
+        def __init__(self):
+            super().__init__()
+
+        def forward(self, x):
+            if len(x) == 1:
+                return x[0]
+            else:
+                return torch.cat(list(x))
 
     def learner(self, i, open_model, loss_fn, optim, n_epochs, x, y, x_test, y_test):
         # training loop for the synthesized model
 
-        model = nn.Sequential(self.CopyModule(i), open_model)
+        model = nn.Sequential(self.CopyModule(i), open_model, self.JoinModule())
 
         if len(model._parameters) > 0:
 
@@ -1979,13 +1987,11 @@ plt.show()
 
             "product": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: self.ProductModule(o, l.with_constant)),
 
-            "copy": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: self.CopyModule(o)),
-
-            "beside_singleton": (lambda i, o, ls, para, x: self.BesideModule(x, None, i)),
+            "beside_singleton": (lambda i, o, ls, para, x: x),
 
             "beside_cons": (lambda i, i1, i2, o, o1, o2, ls, head, tail, x, y: self.BesideModule(x, y, i1)),
 
-            "before_singleton": (lambda i, o, r, ls, ls1, x: self.BeforeModule(x, None)),
+            "before_singleton": (lambda i, o, r, ls, ls1, x: x),
 
             "before_cons": (lambda i, j, o, r, ls, head, tail, x, y: self.BeforeModule(x, y)),
 
@@ -1995,13 +2001,13 @@ plt.show()
 
             "adam_optimizer": (lambda o: lambda m: optim.Adam(m.parameters(), lr=o.learning_rate)),
 
-            "learner": (lambda i, o, r, ls, e, l, opt, loss, optimizer, model: lambda x, y, x_test, y_test: self.learner(i, model, loss, optimizer, e, x, y, x_test, y_test)),
+            "learner": (lambda i, o, di, do, r, ls, e, l, opt, loss, optimizer, model: lambda x, y, x_test, y_test: self.learner(i, model, loss, optimizer, e, x, y, x_test, y_test)),
         }
 
 
 
 if __name__ == "__main__":
-    repo = ODE_1_Repository(linear_feature_dimensions=[1, 2, 5], constant_values=[0, 1,],
+    repo = ODE_1_Repository(dimensions=[1, 2, 3, 4], linear_feature_dimensions=[1, 5, 10], constant_values=[0, 1,],
                             learning_rate_values=[1e-2], n_epoch_values=[10000])
 
     edge = (("swap", 0, 1), 1, 1)
@@ -2020,6 +2026,10 @@ if __name__ == "__main__":
                           )))
 
     target2 = Constructor("Learner", target1
+                                & Constructor("DataDimension", Constructor("input", Literal(1))
+                                                   & Constructor("output", Literal(1)))
+                                & Constructor("DataDimension", Constructor("input", Literal(1))
+                                        & Constructor("output", Literal(1)))
                                 & Constructor("Loss", Constructor("type", Literal(None)))
                                 & Constructor("Optimizer", Constructor("type", Literal(repo.Adam(1e-2))))
                                 & Constructor("epochs", Literal(10000))
@@ -2039,6 +2049,8 @@ if __name__ == "__main__":
                                   ),
                               )
                           )))
+                                & Constructor("DataDimension", Constructor("input", Literal(1))
+                                                   & Constructor("output", Literal(1)))
                                 & Constructor("Loss", Constructor("type", Literal(None)))
                                 & Constructor("Optimizer", Constructor("type", Literal(repo.Adam(1e-2))))
                                 & Constructor("epochs", Literal(10000))
@@ -2050,19 +2062,18 @@ if __name__ == "__main__":
                           & Constructor("structure", Literal(
                               (None, None, None)
                           )))
+                                & Constructor("DataDimension", Constructor("input", Literal(1))
+                                                 & Constructor("output", Literal(1)))
                                 & Constructor("Loss", Constructor("type", Literal(repo.MSEloss())))
                                 & Constructor("Optimizer", Constructor("type", Literal(repo.Adam(1e-2))))
                                 & Constructor("epochs", Literal(10000))
                                 )
 
     target_from_trapezoid3 = Constructor("Learner", Constructor("DAG",
-                                                                Constructor("input", Literal(1))
+                                                                Constructor("input", Literal(3))
                                                                 & Constructor("output", Literal(1))
                                                                 & Constructor("structure", Literal(
                                                                     (
-                                                                        (
-                                                                            (None, 1, 3),
-                                                                        ), # x -> (x,x,x)
                                                                         (
                                                                             (None, 1, 1),
                                                                             (None, 1, 1),
@@ -2092,20 +2103,22 @@ if __name__ == "__main__":
                                                                         )
                                                                     )
                                                                 )))
+                                         & Constructor("DataDimension", Constructor("input", Literal(1))
+                                                       & Constructor("output", Literal(1)))
                                          & Constructor("Loss", Constructor("type", Literal(None)))
                                          & Constructor("Optimizer", Constructor("type", Literal(repo.Adam(1e-2))))
                                          & Constructor("epochs", Literal(10000))
                                          )
 
-    target = target_max_seq_3
+    target = target_from_trapezoid3
     synthesizer = SearchSpaceSynthesizer(repo.specification(), {})
 
     search_space = synthesizer.construct_search_space(target).prune()
     print("finish synthesis, start sampling")
 
-    #terms =  search_space.enumerate_trees(target, 10)
+    terms =  search_space.enumerate_trees(target, 100000)
 
-    terms = search_space.sample(10, target)
+    #terms = search_space.sample(10, target)
 
     terms_list = list(terms)
 
