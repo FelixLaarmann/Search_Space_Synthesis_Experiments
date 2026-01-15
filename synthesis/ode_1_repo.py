@@ -10,7 +10,6 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
-from experiments.ode_BO_experiment import target_from_trapezoid2
 from synthesis.utils import generate_data
 
 class ODE_1_Repository:
@@ -84,11 +83,11 @@ class ODE_1_Repository:
             in sequential compositions.
     """
 
-    def __init__(self, #dimensions,
+    def __init__(self,
                  linear_feature_dimensions, constant_values, learning_rate_values,
-                 n_epoch_values):
+                 n_epoch_values, dimensions=None):
         # additionally to labeled nodes, we have (unlabelled) edges, that needs to be handled additionally
-        self.dimensions = range(1, max(linear_feature_dimensions) + 1)
+        self.dimensions = range(1, max(linear_feature_dimensions) + 1) if dimensions is None or (max(dimensions) < max(linear_feature_dimensions)) else dimensions
         self.linear_feature_dimensions = linear_feature_dimensions
         self.learning_rate_values = learning_rate_values
         self.n_epoch_values = n_epoch_values
