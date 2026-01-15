@@ -196,9 +196,11 @@ def to_grakel_graph_2(t):
     G.add_edges_from(edgelist)
 
     relabel = {n: "Linear" if "Linear" in n else "Sigmoid" if "Sigmoid" in n else "ReLu" if "ReLu" in n else
-                    "Sharpness_Sigmoid" if "Sharpness_Sigmoid" in n else "LTE" if "LTE" in n else
+                    "Tanh" if "Tanh" in n else
                     "Sum" if "Sum" in n else
-                    "Product" if "Product" in n else "Node"
+                    "Product" if "Product" in n else
+                    "Copy" if "Copy" in n else
+                    "Node"
                for n in G.nodes()}
 
     for n in G.nodes():
