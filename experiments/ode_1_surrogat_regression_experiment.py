@@ -274,32 +274,10 @@ if __name__ == "__main__":
     print("X should not have any duplicates!")
     print("If Y has duplicates, either the objective function is not injective or its a rounding error.")
 
-    """
-    x_gp_train_1 = np.array(x_gp[:50])
-    x_gp_train_2 = np.array(x_gp[50:100])
-    x_gp_train_3 = np.array(x_gp[100:150])
-    x_gp_train_4 = np.array(x_gp[150:200])
-    x_gp_train_5 = np.array(x_gp[200:250])
-    x_gp_train_6 = np.array(x_gp[250:300])
-    x_gp_train_7 = np.array(x_gp[300:350])
-    x_gp_train_8 = np.array(x_gp[350:400])
-    """
     x_gp_test = np.array(x_gp[train_size:])
-    """"
-    y_gp_train_1 = np.array(y_gp[:50])
-    y_gp_train_2 = np.array(y_gp[50:100])
-    y_gp_train_3 = np.array(y_gp[100:150])
-    y_gp_train_4 = np.array(y_gp[150:200])
-    y_gp_train_5 = np.array(y_gp[200:250])
-    y_gp_train_6 = np.array(y_gp[250:300])
-    y_gp_train_7 = np.array(y_gp[300:350])
-    y_gp_train_8 = np.array(y_gp[350:400])
-    """
     y_gp_test = np.array(y_gp[train_size:])
 
-
     pears = []
-    #spear = []
     kts = []
 
     slice_size = int(train_size // plot_resolution)
@@ -329,7 +307,6 @@ if __name__ == "__main__":
         y_sigmas.append(sigma_next)
 
         pears.append(pearsonr(y_gp_test, y_pred_next)[0])
-        #spear.append(spearmanr(y_gp_test, y_pred_1)[0])
         kts.append(kendalltau(y_gp_test, y_pred_next)[0])
 
     plt.plot(range(train_size, (plot_resolution + 1)*train_size, train_size), kts, linestyle="dotted")
