@@ -226,7 +226,7 @@ def to_grakel_graph_3(t):
 
 if __name__ == "__main__":
 
-    plot_resolution = 10
+    plot_resolution = 40
 
     sample_size = 500
 
@@ -248,9 +248,13 @@ if __name__ == "__main__":
     print(f"Number of trees found: {len(test_list)}")
     """
 
-    kernel = WeisfeilerLehmanKernel(n_iter=1, to_grakel_graph=to_grakel_graph_2)
+    kernel2 = WeisfeilerLehmanKernel(n_iter=1, to_grakel_graph=to_grakel_graph_2)
 
-    gp = GaussianProcessRegressor(kernel=kernel, optimizer=None, normalize_y=False)
+    kernel3 = WeisfeilerLehmanKernel(n_iter=1, to_grakel_graph=to_grakel_graph_3)
+
+    gp2 = GaussianProcessRegressor(kernel=kernel2, optimizer=None, normalize_y=False)
+
+    gp3 = GaussianProcessRegressor(kernel=kernel3, optimizer=None, normalize_y=False)
 
     # Load pre generated data for the training
     data = torch.load('../data/TrapezoidNet.pth')
@@ -277,46 +281,81 @@ if __name__ == "__main__":
     x_gp_test = np.array(x_gp[train_size:])
     y_gp_test = np.array(y_gp[train_size:])
 
-    pears = []
-    kts = []
 
     slice_size = int(train_size // plot_resolution)
 
     x_gp_train = [np.array(x_gp[i:i + slice_size]) for i in range(0, train_size, slice_size)] #[x_gp_train_1, x_gp_train_2, x_gp_train_3, x_gp_train_4, x_gp_train_5, x_gp_train_6, x_gp_train_7, x_gp_train_8]
     y_gp_train = [np.array(y_gp[i:i + slice_size]) for i in range(0, train_size, slice_size)] #[y_gp_train_1, y_gp_train_2, y_gp_train_3, y_gp_train_4, y_gp_train_5, y_gp_train_6, y_gp_train_7, y_gp_train_8]
-    y_preds = []
-    y_sigmas = []
+    y_preds_gp1 = []
+    y_sigmas_gp1 = []
+    y_preds_gp2 = []
+    y_sigmas_gp2 = []
+    pears_gp1 = []
+    kts_gp1 = []
+    pears_gp2 = []
+    kts_gp2 = []
 
-    print("data generated")
+    #print("data generated")
 
     for x_gp_i, y_gp_i in zip(x_gp_train, y_gp_train):
-        K = kernel(x_gp_i)
-        D = kernel.diag(x_gp_i)
+        K2 = kernel2(x_gp_i)
+        D2 = kernel2.diag(x_gp_i)
 
         plt.figure(figsize=(8, 5))
-        plt.imshow(np.diag(D ** -0.5).dot(K).dot(np.diag(D ** -0.5)))
+        plt.imshow(np.diag(D2 ** -0.5).dot(K2).dot(np.diag(D2 ** -0.5)))
         plt.xticks(np.arange(len(x_gp_i)), range(1, len(x_gp_i) + 1))
         plt.yticks(np.arange(len(x_gp_i)), range(1, len(x_gp_i) + 1))
-        plt.title("Term similarity under the kernel")
+        plt.title("Term similarity under the kernel2")
         plt.show()
 
-        gp.fit(x_gp_i, y_gp_i)
+        gp2.fit(x_gp_i, y_gp_i)
 
-        y_pred_next, sigma_next = gp.predict(x_gp_test, return_std=True)
-        y_preds.append(y_pred_next)
-        y_sigmas.append(sigma_next)
+        y_pred_next, sigma_next = gp2.predict(x_gp_test, return_std=True)
+        y_preds_gp1.append(y_pred_next)
+        y_sigmas_gp1.append(sigma_next)
 
-        pears.append(pearsonr(y_gp_test, y_pred_next)[0])
-        kts.append(kendalltau(y_gp_test, y_pred_next)[0])
+        pears_gp1.append(pearsonr(y_gp_test, y_pred_next)[0])
+        kts_gp1.append(kendalltau(y_gp_test, y_pred_next)[0])
 
-    plt.plot(range(train_size, (plot_resolution + 1)*train_size, train_size), kts, linestyle="dotted")
+        K3 = kernel3(x_gp_i)
+        D3 = kernel3.diag(x_gp_i)
+
+        plt.figure(figsize=(8, 5))
+        plt.imshow(np.diag(D2 ** -0.5).dot(K3).dot(np.diag(D3 ** -0.5)))
+        plt.xticks(np.arange(len(x_gp_i)), range(1, len(x_gp_i) + 1))
+        plt.yticks(np.arange(len(x_gp_i)), range(1, len(x_gp_i) + 1))
+        plt.title("Term similarity under the kernel3")
+        plt.show()
+
+        gp3.fit(x_gp_i, y_gp_i)
+
+        y_pred_next, sigma_next = gp3.predict(x_gp_test, return_std=True)
+        y_preds_gp2.append(y_pred_next)
+        y_sigmas_gp2.append(sigma_next)
+
+        pears_gp2.append(pearsonr(y_gp_test, y_pred_next)[0])
+        kts_gp2.append(kendalltau(y_gp_test, y_pred_next)[0])
+
+    plt.plot(range(train_size, (plot_resolution + 1)*train_size, train_size), kts_gp1, linestyle="dotted")
     plt.xlabel("# of samples")
     plt.ylabel("tau")
-    _ = plt.title("Kendall Tau correlation")
+    _ = plt.title("Kendall Tau correlation for GP with kernel2")
     plt.show()
 
-    plt.plot(range(train_size, (plot_resolution + 1)*train_size, train_size), pears, linestyle="dotted")
+    plt.plot(range(train_size, (plot_resolution + 1)*train_size, train_size), pears_gp1, linestyle="dotted")
     plt.xlabel("# of samples")
     plt.ylabel("p")
-    _ = plt.title("Pearson correlation")
+    _ = plt.title("Pearson correlation for GP with kernel2")
+    plt.show()
+
+    plt.plot(range(train_size, (plot_resolution + 1) * train_size, train_size), kts_gp2, linestyle="dotted")
+    plt.xlabel("# of samples")
+    plt.ylabel("tau")
+    _ = plt.title("Kendall Tau correlation for GP with kernel3")
+    plt.show()
+
+    plt.plot(range(train_size, (plot_resolution + 1) * train_size, train_size), pears_gp2, linestyle="dotted")
+    plt.xlabel("# of samples")
+    plt.ylabel("p")
+    _ = plt.title("Pearson correlation for GP with kernel3")
     plt.show()
