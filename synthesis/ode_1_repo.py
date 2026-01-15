@@ -1804,7 +1804,7 @@ plt.show()
             self.m = m
 
         def forward(self, x):
-            x1, x2 = torch.split(x, self.n, dim=1)
+            x1, x2 = torch.split(x, [self.n, len(x[1]) - self.n], dim=1)
             if len(x1[1]) != self.n or len(x2[1]) != self.m:
                 raise ValueError(f"Swap Module expected input dimensions ({self.n}, {self.m}), but got ({len(x1[1])}, {len(x2[1])})")
             return torch.cat((x2, x1), dim=1)
@@ -1935,12 +1935,12 @@ plt.show()
             self.o = output_dim
 
         def forward(self, x):
-            return x.expand(len(x), self.o)
+            return x.expand(len(x), self.o).clone()
 
     def learner(self, i, open_model, loss_fn, optim, n_epochs, x, y, x_test, y_test):
         # training loop for the synthesized model
 
-        model = nn.Sequential(self.CopyModule(i), open_model)
+        model = open_model
 
         if len(model._parameters) > 0:
 
@@ -2068,9 +2068,8 @@ if __name__ == "__main__":
                                                                             (None, 1, 1)
                                                                         ),  # left, split, right
                                                                         (
-                                                                            edge,
-                                                                            (None, 1, 2),
-                                                                            edge
+                                                                            (("swap", 2, 1), 3, 3),
+                                                                            None
                                                                         ),  # left, gate, right
                                                                         (
                                                                             (None, 2, 1),
@@ -2096,7 +2095,49 @@ if __name__ == "__main__":
                                          & Constructor("epochs", Literal(10000))
                                          )
 
-    target = target_max_seq_3
+    target_from_trapezoid2 = Constructor("Learner", Constructor("DAG",
+                                                                Constructor("input", Literal(1))
+                                                                & Constructor("output", Literal(1))
+                                                                & Constructor("structure", Literal(
+                                                                    (
+                                                                        (
+                                                                            None,
+                                                                        ),
+                                                                        (
+                                                                            None,
+                                                                            None,
+                                                                            None
+                                                                        ),  # left, split, right
+                                                                        (
+                                                                            None,
+                                                                            None,
+                                                                            None
+                                                                        ),  # left, gate, right
+                                                                        (
+                                                                            None,
+                                                                            None,
+                                                                            None
+                                                                        ),  # left_out, -gate, right
+                                                                        (
+                                                                            None,
+                                                                            None,
+                                                                            None
+                                                                        ),  # left_out, 1-gate, right
+                                                                        (
+                                                                            None,
+                                                                            None
+                                                                        ),  # left_out, right_out
+                                                                        (
+                                                                            None,
+                                                                        )
+                                                                    )
+                                                                )))
+                                         & Constructor("Loss", Constructor("type", Literal(None)))
+                                         & Constructor("Optimizer", Constructor("type", Literal(repo.Adam(1e-2))))
+                                         & Constructor("epochs", Literal(10000))
+                                         )
+
+    target = target_from_trapezoid2
     synthesizer = SearchSpaceSynthesizer(repo.specification(), {})
 
     search_space = synthesizer.construct_search_space(target).prune()
@@ -2104,7 +2145,7 @@ if __name__ == "__main__":
 
     #terms =  search_space.enumerate_trees(target, 10)
 
-    terms = search_space.sample(10, target)
+    terms = search_space.sample(100, target)
 
     terms_list = list(terms)
 

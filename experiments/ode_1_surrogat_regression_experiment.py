@@ -1,20 +1,23 @@
 from cl3s import (SpecificationBuilder, Constructor, Literal, Var, Group, DataGroup,
                   DerivationTree, SearchSpaceSynthesizer, BayesianOptimization, WeisfeilerLehmanKernel)
-
 import torch
 import torch.nn as nn
 import torch.optim as optim
-
+import matplotlib.pyplot as plt
 from synthesis.utils import generate_data
-
 import re
-import time 
-
+import time
+import numpy as np
 from grakel.utils import graph_from_networkx
-
 import networkx as nx
-
 from synthesis.ode_1_repo import ODE_1_Repository
+from sklearn.gaussian_process import GaussianProcessRegressor
+from scipy.stats import pearsonr, spearmanr, kendalltau
+from itertools import islice
+
+
+
+
 
 repo = ODE_1_Repository(linear_feature_dimensions=[1, 2, 3], constant_values=[0, 1, -1], learning_rate_values=[1e-2],
                         n_epoch_values=[10000], dimensions=[1,2,3,4])
@@ -223,8 +226,13 @@ def to_grakel_graph_3(t):
 
 if __name__ == "__main__":
 
-    inputs = {"init_sample_size": 10, "budget": 1}
+    plot_resolution = 10
 
+    sample_size = 500
+
+    test_size = int(sample_size // 5)
+
+    train_size = sample_size - test_size
 
     target = target_from_trapezoid2
 
@@ -242,9 +250,7 @@ if __name__ == "__main__":
 
     kernel = WeisfeilerLehmanKernel(n_iter=1, to_grakel_graph=to_grakel_graph_2)
 
-    bo = BayesianOptimization(search_space, target, kernel=kernel, population_size=10, tournament_size=3,
-                              crossover_rate=0.85, mutation_rate=0.4, generation_limit=20, elitism=1,
-                              enforce_diversity=False)
+    gp = GaussianProcessRegressor(kernel=kernel, optimizer=None, normalize_y=False)
 
     # Load pre generated data for the training
     data = torch.load('../data/TrapezoidNet.pth')
@@ -253,19 +259,80 @@ if __name__ == "__main__":
     x_test = data['x_test']
     y_test = data['y_test']
 
-
-    start = time.time()
-
     def f_obj(t):
         learner = t.interpret(repo.pytorch_function_algebra())
         return learner(x, y, x_test, y_test)
 
-    result = bo.bayesian_optimisation(inputs["init_sample_size"], f_obj,
-                                               n_pre_samples=inputs["init_sample_size"], greater_is_better=False) # minimize f_obj
-    end = time.time()
-    print("Best tree found:")
-    print(result["best_tree"].interpret(repo.pretty_term_algebra()))
-    print("The following data was generated:")
-    for x, y in zip(result["x"], result["y"]):
-        print(f"Tree: {x.interpret(repo.pretty_term_algebra())}, Test Loss: {y}")
-    print(f'Elapsed Time: {end - start}')
+    terms = search_space.sample(sample_size, target)
+    x_gp = list(terms)
+    y_gp = [f_obj(t) for t in x_gp]
+
+    """
+    x_gp_train_1 = np.array(x_gp[:50])
+    x_gp_train_2 = np.array(x_gp[50:100])
+    x_gp_train_3 = np.array(x_gp[100:150])
+    x_gp_train_4 = np.array(x_gp[150:200])
+    x_gp_train_5 = np.array(x_gp[200:250])
+    x_gp_train_6 = np.array(x_gp[250:300])
+    x_gp_train_7 = np.array(x_gp[300:350])
+    x_gp_train_8 = np.array(x_gp[350:400])
+    """
+    x_gp_test = np.array(x_gp[train_size:])
+    """"
+    y_gp_train_1 = np.array(y_gp[:50])
+    y_gp_train_2 = np.array(y_gp[50:100])
+    y_gp_train_3 = np.array(y_gp[100:150])
+    y_gp_train_4 = np.array(y_gp[150:200])
+    y_gp_train_5 = np.array(y_gp[200:250])
+    y_gp_train_6 = np.array(y_gp[250:300])
+    y_gp_train_7 = np.array(y_gp[300:350])
+    y_gp_train_8 = np.array(y_gp[350:400])
+    """
+    y_gp_test = np.array(y_gp[train_size:])
+
+
+    pears = []
+    #spear = []
+    kts = []
+
+    slice_size = int(train_size // plot_resolution)
+
+    x_gp_train = [np.array(x_gp[i:i + slice_size]) for i in range(0, train_size, slice_size)] #[x_gp_train_1, x_gp_train_2, x_gp_train_3, x_gp_train_4, x_gp_train_5, x_gp_train_6, x_gp_train_7, x_gp_train_8]
+    y_gp_train = [np.array(y_gp[i:i + slice_size]) for i in range(0, train_size, slice_size)] #[y_gp_train_1, y_gp_train_2, y_gp_train_3, y_gp_train_4, y_gp_train_5, y_gp_train_6, y_gp_train_7, y_gp_train_8]
+    y_preds = []
+    y_sigmas = []
+
+    print("data generated")
+
+    for x_gp_i, y_gp_i in zip(x_gp_train, y_gp_train):
+        K = kernel(x_gp_i)
+        D = kernel.diag(x_gp_i)
+
+        plt.figure(figsize=(8, 5))
+        plt.imshow(np.diag(D ** -0.5).dot(K).dot(np.diag(D ** -0.5)))
+        plt.xticks(np.arange(len(x_gp_i)), range(1, len(x_gp_i) + 1))
+        plt.yticks(np.arange(len(x_gp_i)), range(1, len(x_gp_i) + 1))
+        plt.title("Term similarity under the kernel")
+        plt.show()
+
+        gp.fit(x_gp_i, y_gp_i)
+
+        y_pred_next, sigma_next = gp.predict(x_gp_test, return_std=True)
+        y_preds.append(y_pred_next)
+        y_sigmas.append(sigma_next)
+
+        pears.append(pearsonr(y_gp_test, y_pred_next)[0])
+        #spear.append(spearmanr(y_gp_test, y_pred_1)[0])
+        kts.append(kendalltau(y_gp_test, y_pred_next)[0])
+
+    plt.plot(range(train_size, (plot_resolution + 1)*train_size, train_size), kts, linestyle="dotted")
+    plt.xlabel("# of samples")
+    plt.ylabel("tau")
+    _ = plt.title("Kendall Tau correlation")
+    plt.show()
+
+    plt.plot(range(train_size, (plot_resolution + 1)*train_size, train_size), pears, linestyle="dotted")
+    plt.xlabel("# of samples")
+    plt.ylabel("p")
+    _ = plt.title("Pearson correlation")
+    plt.show()
