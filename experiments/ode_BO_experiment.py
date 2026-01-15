@@ -8,6 +8,7 @@ import torch.optim as optim
 from synthesis.utils import generate_data
 
 import re
+import time 
 
 from grakel.utils import graph_from_networkx
 
@@ -275,12 +276,22 @@ if __name__ == "__main__":
             return left_out + right_out
 
 
-    true_model = TrapezoidNetPure()
+    # true_model = TrapezoidNetPure()
 
     # Generate data is a bit noisy to make it closer to the real world
     # test data is a little bit out of distribution because we change xmin/xmax a little bit
-    x, y = generate_data(true_model, xmin=-10, xmax=10, n_samples=1_000, eps=1e-4)
-    x_test, y_test = generate_data(true_model, xmin=-15, xmax=15, n_samples=1_000, eps=1e-4)
+    #x, y = generate_data(true_model, xmin=-10, xmax=10, n_samples=1_000, eps=1e-4)
+    #x_test, y_test = generate_data(true_model, xmin=-15, xmax=15, n_samples=1_000, eps=1e-4)
+
+    # Load pre generated data for the training
+    data = torch.load('data/TrapezoidNet.pth')
+    x = data['x_train']
+    y = data['y_train']
+    x_test = data['x_test']
+    y_test = data['y_test']
+
+
+    start = time.time()
 
     def f_obj(t):
         learner = t.interpret(repo.pytorch_function_algebra())
@@ -288,9 +299,10 @@ if __name__ == "__main__":
 
     best_tree, X, Y = bo.bayesian_optimisation(inputs["init_sample_size"], f_obj,
                                                n_pre_samples=inputs["init_sample_size"], greater_is_better=False) # minimize f_obj
-
+    end = time.time()
     print("Best tree found:")
     print(best_tree.interpret(repo.pretty_term_algebra()))
     print("The following data was generated:")
     for x, y in zip(X, Y):
         print(f"Tree: {x.interpret(repo.pretty_term_algebra())}, Test Loss: {y}")
+    print(f'Elapsed Time: {end - start}')

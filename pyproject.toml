@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "search-space-synthesis-experiments"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = ["synthesis"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["synthesis"]
+exclude = ["experiments"]
