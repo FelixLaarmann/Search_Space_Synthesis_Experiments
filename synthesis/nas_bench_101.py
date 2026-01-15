@@ -96,25 +96,24 @@ class NASBench101_Repo:
         right = tail.root
 
         if "beside_singleton" in left and "before_cons" in right:
-            if len(head.children) != 5 or len(tail.children) != 9:
+            if len(head.children) != 5 or len(tail.children) != 11:
                 raise ValueError("Derivation trees have not the expected shape.")
             left_term = head.children[4]
-            right_head = tail.children[7]
-            right_tail = tail.children[8]
+            right_head = tail.children[9]
+            right_tail = tail.children[10]
 
             left_term_root = left_term.root
             right_head_root = right_head.root
             right_tail_root = right_tail.root
-            if (
-                    left_term_root == "swap") and "beside_cons" in right_head_root and "before_singleton" in right_tail_root:
-                if len(left_term.children) != 19 or len(right_head.children) != 11 or len(right_tail.children) != 6:
+            if (left_term_root == "swap") and "beside_cons" in right_head_root and "before_singleton" in right_tail_root:
+                if len(left_term.children) != 4 or len(right_head.children) != 14 or len(right_tail.children) != 5:
                     raise ValueError("Derivation trees have not the expected shape.")
                 m = left_term.children[1]
                 n = left_term.children[2]
                 x_n = right_head.children[1]
                 x_p = right_head.children[4]
-                right_head_tail = right_head.children[10]
-                right_tail_term = right_tail.children[5]
+                right_head_tail = right_head.children[13]
+                right_tail_term = right_tail.children[4]
                 right_head_tail_root = right_head_tail.root
                 right_tail_term_root = right_tail_term.root
                 if "beside_singleton" in right_head_tail_root and "beside_singleton" in right_tail_term_root:
@@ -125,21 +124,21 @@ class NASBench101_Repo:
                     right_swap = right_tail_term.children[4]
                     right_swap_root = right_swap.root
                     if right_swap_root == "swap":
-                        if len(right_swap.children) != 19:
+                        if len(right_swap.children) != 4:
                             raise ValueError("Derivation trees have not the expected shape.")
                         p = right_swap.children[1]
                         q = right_swap.children[2]
                         if m == y_m and n == x_n and p == x_p and q == y_q:
                             return False
             elif (left == "swap") and "beside_cons" in right_head_root and "before_cons" in right_tail_root:
-                if len(left_term.children) != 19 or len(right_head.children) != 11 or len(right_tail.children) != 9:
+                if len(left_term.children) != 4 or len(right_head.children) != 14 or len(right_tail.children) != 11:
                     raise ValueError("Derivation trees have not the expected shape.")
                 m = left_term.children[1]
                 n = left_term.children[2]
                 x_n = right_head.children[1]
                 x_p = right_head.children[4]
-                right_head_tail = right_head.children[10]
-                right_tail_head = right_tail.children[7]
+                right_head_tail = right_head.children[13]
+                right_tail_head = right_tail.children[9]
                 right_head_tail_root = right_head_tail.root
                 right_tail_term_root = right_tail_head.root
                 if "beside_singleton" in right_head_tail_root and "beside_singleton" in right_tail_term_root:
@@ -150,7 +149,7 @@ class NASBench101_Repo:
                     right_swap = right_tail_head.children[4]
                     right_swap_root = right_swap.root
                     if right_swap_root == "swap":
-                        if len(right_swap.children) != 19:
+                        if len(right_swap.children) != 4:
                             raise ValueError("Derivation trees have not the expected shape.")
                         p = right_swap.children[1]
                         q = right_swap.children[2]
@@ -173,30 +172,29 @@ class NASBench101_Repo:
         right = tail.root
 
         if "beside_cons" in left and "before_singleton" in right:
-            if len(head.children) != 11 or len(tail.children) != 6:
+            if len(head.children) != 14 or len(tail.children) != 5:
                 raise ValueError("Derivation trees have not the expected shape.")
-            left_head = head.children[9]
-            left_tail = head.children[10]
-            right_term = tail.children[5]
+            left_head = head.children[12]
+            left_tail = head.children[13]
+            right_term = tail.children[4]
 
             left_swap = left_head.root
             left_tail_root = left_tail.root
             right_term_root = right_term.root
             if (left_swap == "swap") and "beside_singleton" in left_tail_root and "beside_cons" in right_term_root:
-                if len(left_head.children) != 19 or len(left_tail.children) != 5 or len(right_term.children) != 11:
+                if len(left_head.children) != 4 or len(left_tail.children) != 5 or len(right_term.children) != 14:
                     raise ValueError("Derivation trees have not the expected shape.")
                 m = left_head.children[1]
                 n = left_head.children[2]
                 left_tail_term = left_tail.children[4]  # swap(p, 0, p)
-                right_head = right_term.children[9]  # swap(n, 0, n)
-                right_tail = right_term.children[10]
+                right_head = right_term.children[12]  # swap(n, 0, n)
+                right_tail = right_term.children[13]
 
                 left_tail_swap = left_tail_term.root
                 right_head_root = right_head.root
                 right_tail_root = right_tail.root
                 if left_tail_swap == "edges" and right_head_root == "edges" and "beside_singleton" in right_tail_root:
-                    if len(left_tail_term.children) != 17 or len(right_head.children) != 17 or len(
-                            right_tail.children) != 5:
+                    if len(left_tail_term.children) != 2 or len(right_head.children) != 2 or len(right_tail.children) != 5:
                         raise ValueError("Derivation trees have not the expected shape.")
                     p = left_tail_term.children[0]
                     right_n = right_head.children[0]
@@ -204,37 +202,36 @@ class NASBench101_Repo:
                     right_tail_term = right_tail.children[4]  # swap(m+p, m, p)
                     right_tail_term_root = right_tail_term.root
                     if (right_tail_term_root == "swap") and n == right_n:
-                        if len(right_tail_term.children) != 19:
+                        if len(right_tail_term.children) != 4:
                             raise ValueError("Derivation trees have not the expected shape.")
                         right_m = right_tail_term.children[1]
                         right_p = right_tail_term.children[2]
                         if m == right_m and p == right_p:
                             return False
         elif "beside_cons" in left and "before_cons" in right:
-            if len(head.children) != 11 or len(tail.children) != 9:
+            if len(head.children) != 14 or len(tail.children) != 11:
                 raise ValueError("Derivation trees have not the expected shape.")
-            left_head = head.children[9]
-            left_tail = head.children[10]
-            right_term = tail.children[7]
+            left_head = head.children[12]
+            left_tail = head.children[13]
+            right_term = tail.children[9]
 
             left_swap = left_head.root
             left_tail_root = left_tail.root
             right_term_root = right_term.root
             if (left_swap == "swap") and "beside_singleton" in left_tail_root and "beside_cons" in right_term_root:
-                if len(left_head.children) != 19 or len(left_tail.children) != 5 or len(right_term.children) != 11:
+                if len(left_head.children) != 4 or len(left_tail.children) != 5 or len(right_term.children) != 14:
                     raise ValueError("Derivation trees have not the expected shape.")
                 m = left_head.children[1]
                 n = left_head.children[2]
                 left_tail_term = left_tail.children[4]  # swap(p, 0, p)
-                right_head = right_term.children[9]  # swap(n, 0, n)
-                right_tail = right_term.children[10]
+                right_head = right_term.children[12]  # swap(n, 0, n)
+                right_tail = right_term.children[13]
 
                 left_tail_swap = left_tail_term.root
                 right_head_root = right_head.root
                 right_tail_root = right_tail.root
                 if left_tail_swap == "edges" and right_head_root == "edges" and "beside_singleton" in right_tail_root:
-                    if len(left_tail_term.children) != 17 or len(right_head.children) != 17 or len(
-                            right_tail.children) != 5:
+                    if len(left_tail_term.children) != 2 or len(right_head.children) != 2 or len(right_tail.children) != 5:
                         raise ValueError("Derivation trees have not the expected shape.")
                     p = left_tail_term.children[0]
                     right_n = right_head.children[0]
@@ -242,7 +239,7 @@ class NASBench101_Repo:
                     right_tail_term = right_tail.children[4]  # swap(m+p, m, p)
                     right_tail_term_root = right_tail_term.root
                     if right_tail_term_root == "swap" and n == right_n:
-                        if len(right_tail_term.children) != 19:
+                        if len(right_tail_term.children) != 4:
                             raise ValueError("Derivation trees have not the expected shape.")
                         right_m = right_tail_term.children[1]
                         right_p = right_tail_term.children[2]
@@ -263,38 +260,38 @@ class NASBench101_Repo:
         right = tail.root
 
         if "beside_singleton" in left and "before_singleton" in right:
-            if len(head.children) != 5 or len(tail.children) != 6:
+            if len(head.children) != 5 or len(tail.children) != 5:
                 raise ValueError("Derivation trees have not the expected shape.")
             left_term = head.children[4]
-            right_term = tail.children[5]
+            right_term = tail.children[4]
 
             left_term_root = left_term.root
             right_term_root = right_term.root
             if (left_term_root == "swap") and "beside_singleton" in right_term_root:
-                if len(left_term.children) != 19 or len(right_term.children) != 5:
+                if len(left_term.children) != 4 or len(right_term.children) != 5:
                     raise ValueError("Derivation trees have not the expected shape.")
                 m = left_term.children[1]
                 n = left_term.children[2]
 
                 right_beside = right_term.children[4]
                 right_beside_root = right_beside.root
-                if right_beside_root == "swap" or right_beside_root == "swap":
-                    if len(right_beside.children) != 19:
+                if right_beside_root == "swap":
+                    if len(right_beside.children) != 4:
                         raise ValueError("Derivation trees have not the expected shape.")
                     right_n = right_beside.children[1]
                     right_m = right_beside.children[2]
                     if m == right_m and n == right_n:
                         return False
         elif "beside_singleton" in left and "before_cons" in right:
-            if len(head.children) != 5 or len(tail.children) != 9:
+            if len(head.children) != 5 or len(tail.children) != 11:
                 raise ValueError("Derivation trees have not the expected shape.")
             left_term = head.children[4]
-            right_term = tail.children[7]
+            right_term = tail.children[9]
 
             left_term_root = left_term.root
             right_term_root = right_term.root
             if (left_term_root == "swap") and "beside_singleton" in right_term_root:
-                if len(left_term.children) != 19 or len(right_term.children) != 5:
+                if len(left_term.children) != 4 or len(right_term.children) != 5:
                     raise ValueError("Derivation trees have not the expected shape.")
                 m = left_term.children[1]
                 n = left_term.children[2]
@@ -323,30 +320,29 @@ class NASBench101_Repo:
         right = tail.root
 
         if "beside_cons" in left and "before_singleton" in right:
-            if len(head.children) != 11 or len(tail.children) != 6:
+            if len(head.children) != 14 or len(tail.children) != 5:
                 raise ValueError("Derivation trees have not the expected shape.")
-            left_head = head.children[9]
-            left_tail = head.children[10]
-            right_term = tail.children[5]
+            left_head = head.children[12]
+            left_tail = head.children[13]
+            right_term = tail.children[4]
 
             left_head_root = left_head.root
             left_tail_root = left_tail.root
             right_term_root = right_term.root
             if left_head_root == "edges" and "beside_singleton" in left_tail_root and "beside_cons" in right_term_root:
-                if len(left_head.children) != 17 or len(left_tail.children) != 5 or len(right_term.children) != 11:
+                if len(left_head.children) != 2 or len(left_tail.children) != 5 or len(right_term.children) != 14:
                     raise ValueError("Derivation trees have not the expected shape.")
                 m = left_head.children[0]
 
                 left_tail_term = left_tail.children[4]
-                right_head = right_term.children[9]
-                right_tail = right_term.children[10]
+                right_head = right_term.children[12]
+                right_tail = right_term.children[13]
 
                 left_tail_term_root = left_tail_term.root
                 right_head_root = right_head.root
                 right_tail_root = right_tail.root
                 if left_tail_term_root == "swap" and right_head_root == "swap" and "beside_singleton" in right_tail_root:
-                    if len(left_tail_term.children) != 19 or len(right_head.children) != 19 or len(
-                            right_tail.children) != 5:
+                    if len(left_tail_term.children) != 4 or len(right_head.children) != 4 or len(right_tail.children) != 5:
                         raise ValueError("Derivation trees have not the expected shape.")
                     n = left_tail_term.children[1]
                     p = left_tail_term.children[2]
@@ -358,37 +354,36 @@ class NASBench101_Repo:
                     right_tail_term_root = right_tail_term.root
 
                     if right_tail_term_root == "edges" and m == right_m and p == right_p:
-                        if len(right_tail_term.children) != 17:
+                        if len(right_tail_term.children) != 2:
                             raise ValueError("Derivation trees have not the expected shape.")
                         right_n = right_tail_term.children[0]
                         if n == right_n:
                             return False
 
         elif "beside_cons" in left and "before_cons" in right:
-            if len(head.children) != 11 or len(tail.children) != 9:
+            if len(head.children) != 14 or len(tail.children) != 11:
                 raise ValueError("Derivation trees have not the expected shape.")
-            left_head = head.children[9]
-            left_tail = head.children[10]
-            right_term = tail.children[7]
+            left_head = head.children[12]
+            left_tail = head.children[13]
+            right_term = tail.children[9]
 
             left_head_root = left_head.root
             left_tail_root = left_tail.root
             right_term_root = right_term.root
             if left_head_root == "edges" and "beside_singleton" in left_tail_root and "beside_cons" in right_term_root:
-                if len(left_head.children) != 17 or len(left_tail.children) != 5 or len(right_term.children) != 11:
+                if len(left_head.children) != 2 or len(left_tail.children) != 5 or len(right_term.children) != 14:
                     raise ValueError("Derivation trees have not the expected shape.")
                 m = left_head.children[0]
 
                 left_tail_term = left_tail.children[4]
-                right_head = right_term.children[9]
-                right_tail = right_term.children[10]
+                right_head = right_term.children[12]
+                right_tail = right_term.children[13]
 
                 left_tail_term_root = left_tail_term.root
                 right_head_root = right_head.root
                 right_tail_root = right_tail.root
                 if left_tail_term_root == "swap" and right_head_root == "swap" and "beside_singleton" in right_tail_root:
-                    if len(left_tail_term.children) != 19 or len(right_head.children) != 19 or len(
-                            right_tail.children) != 5:
+                    if len(left_tail_term.children) != 4 or len(right_head.children) != 4 or len(right_tail.children) != 5:
                         raise ValueError("Derivation trees have not the expected shape.")
                     n = left_tail_term.children[1]
                     p = left_tail_term.children[2]
@@ -400,7 +395,7 @@ class NASBench101_Repo:
                     right_tail_term_root = right_tail_term.root
 
                     if right_tail_term_root == "edges" and m == right_m and p == right_p:
-                        if len(right_tail_term.children) != 17:
+                        if len(right_tail_term.children) != 2:
                             raise ValueError("Derivation trees have not the expected shape.")
                         right_n = right_tail_term.children[0]
                         if n == right_n:
@@ -441,7 +436,7 @@ class NASBench101_Repo:
                                 & Constructor("output", Var("io"))
                                 & Constructor("output", Literal(None))
                                 & Constructor("number_of_edges", Var("e"))
-                                & Constructor("number_of_nodes", Var("e"))
+                                & Constructor("number_of_nodes", Literal(0))
                                 ) & Constructor("ID")
                     ),
 
@@ -455,7 +450,7 @@ class NASBench101_Repo:
                                 & Constructor("output", Var("io"))
                                 & Constructor("output", Literal(None))
                                 & Constructor("number_of_edges", Var("e"))
-                                & Constructor("number_of_nodes", Var("e"))
+                                & Constructor("number_of_nodes", Literal(0))
                                 ) & Constructor("non_ID")
                     ),
             "node": SpecificationBuilder()
