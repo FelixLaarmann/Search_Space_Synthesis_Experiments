@@ -267,6 +267,13 @@ if __name__ == "__main__":
     x_gp = list(terms)
     y_gp = [f_obj(t) for t in x_gp]
 
+    print("duplicates in data:")
+    print("X: ", len(x_gp) - len(set(x_gp)))
+    print("Y: ", len(y_gp) - len(set(y_gp)))
+
+    print("X should not have any duplicates!")
+    print("If Y has duplicates, either the objective function is not injective or its a rounding error.")
+
     """
     x_gp_train_1 = np.array(x_gp[:50])
     x_gp_train_2 = np.array(x_gp[50:100])
