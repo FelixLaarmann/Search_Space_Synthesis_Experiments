@@ -229,9 +229,9 @@ def to_grakel_graph_3(t):
 
 if __name__ == "__main__":
 
-    plot_resolution = 4 # 40
+    plot_resolution = 40
 
-    sample_size = 20 # 500
+    sample_size = 500
 
     test_size = int(sample_size // 5)
 

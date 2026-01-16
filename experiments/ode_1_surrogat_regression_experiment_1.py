@@ -14,6 +14,7 @@ from synthesis.ode_1_repo import ODE_1_Repository
 from sklearn.gaussian_process import GaussianProcessRegressor
 from scipy.stats import pearsonr, spearmanr, kendalltau
 from itertools import islice
+import dill
 
 EXPERIMENT_NUMBER = "S1"
 
@@ -243,6 +244,9 @@ if __name__ == "__main__":
     search_space = synthesizer.construct_search_space(target).prune()
     print("finished synthesis")
 
+    with open(f'results/search_space_{EXPERIMENT_NUMBER}.pkl', 'wb') as f: 
+        dill.dump(search_space, f)
+
     """
     test = search_space.enumerate_trees(target, 10)
 
@@ -303,7 +307,7 @@ if __name__ == "__main__":
 
     #print("data generated")
 
-    for x_gp_i, y_gp_i in zip(x_gp_train, y_gp_train):
+    for idx, (x_gp_i, y_gp_i) in enumerate(zip(x_gp_train, y_gp_train)):
         K1 = kernel1(x_gp_i)
         D1 = kernel1.diag(x_gp_i)
 
@@ -312,7 +316,10 @@ if __name__ == "__main__":
         plt.xticks(np.arange(len(x_gp_i)), range(1, len(x_gp_i) + 1))
         plt.yticks(np.arange(len(x_gp_i)), range(1, len(x_gp_i) + 1))
         plt.title("Term similarity under the kernel2")
-        plt.show()
+        plt.savefig(f'plots/term_sim_k1_{idx}_{EXPERIMENT_NUMBER}.png')
+        plt.savefig(f'plots/term_sim_k1_{idx}_{EXPERIMENT_NUMBER}.pdf')
+        plt.close()
+
 
         gp1.fit(x_gp_i, y_gp_i)
 
@@ -331,7 +338,10 @@ if __name__ == "__main__":
         plt.xticks(np.arange(len(x_gp_i)), range(1, len(x_gp_i) + 1))
         plt.yticks(np.arange(len(x_gp_i)), range(1, len(x_gp_i) + 1))
         plt.title("Term similarity under the kernel2")
-        plt.show()
+        plt.savefig(f'plots/term_sim_k2_{idx}_{EXPERIMENT_NUMBER}.png')
+        plt.savefig(f'plots/term_sim_k2_{idx}_{EXPERIMENT_NUMBER}.pdf')
+        plt.close()
+
 
         gp2.fit(x_gp_i, y_gp_i)
 
@@ -349,7 +359,9 @@ if __name__ == "__main__":
         plt.xticks(np.arange(len(x_gp_i)), range(1, len(x_gp_i) + 1))
         plt.yticks(np.arange(len(x_gp_i)), range(1, len(x_gp_i) + 1))
         plt.title("Term similarity under the kernel3")
-        plt.show()
+        plt.savefig(f'plots/term_sim_k3_{idx}_{EXPERIMENT_NUMBER}.png')
+        plt.savefig(f'plots/term_sim_k3_{idx}_{EXPERIMENT_NUMBER}.pdf')
+        plt.close()
 
         gp3.fit(x_gp_i, y_gp_i)
 
@@ -360,38 +372,76 @@ if __name__ == "__main__":
         pears_gp3.append(pearsonr(y_gp_test, y_pred_next)[0])
         kts_gp3.append(kendalltau(y_gp_test, y_pred_next)[0])
 
+        ################## Save Kernels
+        np.savez_compressed(f'results/kernels_{idx}_{EXPERIMENT_NUMBER}.npz', k1=K1, d1=D1, k2=K2, d2=D2, k3=K3, d3=D3) 
+
+        ##################
+
     plt.plot(range(train_size, (plot_resolution + 1)*train_size, train_size), kts_gp1, linestyle="dotted")
     plt.xlabel("# of samples")
     plt.ylabel("tau")
     _ = plt.title("Kendall Tau correlation for GP with kernel1")
-    plt.show()
+    plt.savefig(f'plots/ktau_k1_{EXPERIMENT_NUMBER}.png')
+    plt.savefig(f'plots/ktau_k1_{EXPERIMENT_NUMBER}.pdf')
+    plt.close()
 
     plt.plot(range(train_size, (plot_resolution + 1)*train_size, train_size), pears_gp1, linestyle="dotted")
     plt.xlabel("# of samples")
     plt.ylabel("p")
     _ = plt.title("Pearson correlation for GP with kernel1")
-    plt.show()
+    plt.savefig(f'plots/pc_k2_{EXPERIMENT_NUMBER}.png')
+    plt.savefig(f'plots/pc_k2_{EXPERIMENT_NUMBER}.pdf')
+    plt.close()
 
     plt.plot(range(train_size, (plot_resolution + 1) * train_size, train_size), kts_gp2, linestyle="dotted")
     plt.xlabel("# of samples")
     plt.ylabel("tau")
     _ = plt.title("Kendall Tau correlation for GP with kernel2")
-    plt.show()
+    plt.savefig(f'plots/ktau_k2_{EXPERIMENT_NUMBER}.png')
+    plt.savefig(f'plots/ktau_k2_{EXPERIMENT_NUMBER}.pdf')
+    plt.close()
 
     plt.plot(range(train_size, (plot_resolution + 1) * train_size, train_size), pears_gp2, linestyle="dotted")
     plt.xlabel("# of samples")
     plt.ylabel("p")
     _ = plt.title("Pearson correlation for GP with kernel2")
-    plt.show()
+    plt.savefig(f'plots/pc_k2_{EXPERIMENT_NUMBER}.png')
+    plt.savefig(f'plots/pc_k2_{EXPERIMENT_NUMBER}.pdf')
+    plt.close()
 
     plt.plot(range(train_size, (plot_resolution + 1) * train_size, train_size), kts_gp3, linestyle="dotted")
     plt.xlabel("# of samples")
     plt.ylabel("tau")
     _ = plt.title("Kendall Tau correlation for GP with kernel3")
-    plt.show()
+    plt.savefig(f'plots/ktau_k3_{EXPERIMENT_NUMBER}.png')
+    plt.savefig(f'plots/ktau_k3_{EXPERIMENT_NUMBER}.pdf')
+    plt.close()
 
     plt.plot(range(train_size, (plot_resolution + 1) * train_size, train_size), pears_gp3, linestyle="dotted")
     plt.xlabel("# of samples")
     plt.ylabel("p")
     _ = plt.title("Pearson correlation for GP with kernel3")
-    plt.show()
+    plt.savefig(f'plots/pc_k3_{EXPERIMENT_NUMBER}.png')
+    plt.savefig(f'plots/pc_k3_{EXPERIMENT_NUMBER}.pdf')
+    plt.close()
+
+    # Save data
+    regression_data = {
+        'x_gp_train' : x_gp_train,
+        'y_gp_train' : y_gp_train,
+        'y_preds_gp1': y_preds_gp1,
+        'y_sigmas_gp1': y_sigmas_gp1, 
+        'y_preds_gp2' : y_preds_gp2,
+        'y_sigmas_gp2' : y_sigmas_gp2,
+        'y_preds_gp3' : y_preds_gp3,
+        'y_sigmas_gp3' : y_sigmas_gp3,
+        'pears_gp1' : pears_gp1,
+        'kts_gp1' : kts_gp1,
+        'pears_gp2' : pears_gp2,
+        'kts_gp2' : kts_gp2,
+        'pears_gp3' : pears_gp3,
+        'kts_gp3' : kts_gp3
+    }
+
+    with open(f'results/regression_data_{EXPERIMENT_NUMBER}.pkl', 'wb') as f:
+        dill.dump(regression_data, f)
