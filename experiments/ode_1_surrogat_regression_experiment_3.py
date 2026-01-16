@@ -15,8 +15,7 @@ from sklearn.gaussian_process import GaussianProcessRegressor
 from scipy.stats import pearsonr, spearmanr, kendalltau
 from itertools import islice
 
-
-
+EXPERIMENT_NUMBER = "S3"
 
 
 repo = ODE_1_Repository(linear_feature_dimensions=[1, 2, 3], constant_values=[0, 1, -1], learning_rate_values=[1e-2],
