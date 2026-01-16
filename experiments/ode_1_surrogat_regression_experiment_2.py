@@ -386,16 +386,17 @@ if __name__ == "__main__":
     plt.close()
 
     # Save data
-    np.savez_compressed(
-        f'regression_data_{EXPERIMENT_NUMBER}.npz',
-        x_gp_train = x_gp_train,
-        y_gp_train = y_gp_train, 
-        y_preds_gp2 = y_preds_gp2,
-        y_sigmas_gp2 = y_sigmas_gp2,
-        y_preds_gp3 = y_preds_gp3,
-        y_sigmas_gp3 = y_sigmas_gp3,
-        pears_gp2 = pears_gp2,
-        kts_gp2 = kts_gp2,
-        pears_gp3 = pears_gp3,
-        kts_gp3 = kts_gp3
-    )
+    regression_data = {
+        'x_gp_train' : x_gp_train,
+        'y_gp_train' : y_gp_train, 
+        'y_preds_gp2' : y_preds_gp2,
+        'y_sigmas_gp2' : y_sigmas_gp2,
+        'y_preds_gp3' : y_preds_gp3,
+        'y_sigmas_gp3' : y_sigmas_gp3,
+        'pears_gp2' : pears_gp2,
+        'kts_gp2' : kts_gp2,
+        'pears_gp3' : pears_gp3,
+        'kts_gp3' : kts_gp3
+    }
+    with open(f'results/regression_data_{EXPERIMENT_NUMBER}.pkl', 'wb') as f:
+        dill.dump(regression_data, f)
