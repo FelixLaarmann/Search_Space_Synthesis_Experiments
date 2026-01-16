@@ -75,12 +75,14 @@ class NASBench101_Repo:
             in sequential compositions.
     """
 
-    def __init__(self, labels):
+    def __init__(self, labels, max_number_edges: int = 9, max_number_nodes: int = 5, max_parallel_edges: int = 9):
         # additionally to labeled nodes, we have (unlabelled) edges, that needs to be handled additionally
         if "swap" in labels:
             raise ValueError("Label 'swap' is reserved and cannot be used as a node label.")
         self.labels = labels
-        self.dimensions = list(range(1, 10)) # NAS-Bench-101 contains at most 9 edges
+        self.dimensions = list(range(1, max_parallel_edges + 1))  # NAS-Bench-101 contains at most 9 edges
+        self.max_number_edges = max_number_edges
+        self.max_number_nodes = max_number_nodes
 
     @staticmethod
     def swaplaw1(head: DerivationTree[Any, str, Any], tail: DerivationTree[Any, str, Any]) -> bool:
@@ -415,7 +417,8 @@ class NASBench101_Repo:
     def specification(self):
         labels = DataGroup("para", self.labels)
         dimension = DataGroup("dimension", self.dimensions)
-        number = DataGroup("number", self.dimensions + [0])
+        number_edges = DataGroup("number", range(0, self.max_number_edges + 1))
+        number_nodes = DataGroup("number", range(0, self.max_number_nodes + 1))
 
         return {
             # atomic components are nodes and edges
@@ -430,7 +433,7 @@ class NASBench101_Repo:
             # (m parallel) edges are swaps with n=0
             "edges": SpecificationBuilder()
             .parameter("io", dimension)
-            .parameter("e", number, lambda v: [v["io"]])
+            .parameter("e", number_edges, lambda v: [v["io"]])
             .suffix(Constructor("DAG_component", Constructor("input", Var("io"))
                                 & Constructor("input", Literal(None))
                                 & Constructor("output", Var("io"))
@@ -444,7 +447,7 @@ class NASBench101_Repo:
             .parameter("io", dimension)
             .parameter("n", dimension, lambda v: range(1, v["io"]))
             .parameter("m", dimension, lambda v: [v["io"] - v["n"]]) # m > 0
-            .parameter("e", number, lambda v: [v["io"]])
+            .parameter("e", number_edges, lambda v: [v["io"]])
             .suffix(Constructor("DAG_component", Constructor("input", Var("io"))
                                 & Constructor("input", Literal(None))
                                 & Constructor("output", Var("io"))
@@ -457,7 +460,7 @@ class NASBench101_Repo:
             .parameter("l", labels)
             .parameter("i", dimension)
             .parameter("o", dimension)
-            .parameter("e", number, lambda v: [v["i"] + v["o"]])
+            .parameter("e", number_edges, lambda v: [v["i"] + v["o"]])
             .suffix(Constructor("DAG_component",
                                 Constructor("input", Var("i"))
                                 & Constructor("input", Literal(None))
@@ -471,9 +474,9 @@ class NASBench101_Repo:
             "beside_singleton": SpecificationBuilder()
             .parameter("i", dimension)
             .parameter("o", dimension)
-            .parameter("e", number)
+            .parameter("e", number_edges)
             .parameter_constraint(lambda v: v["i"] <= v["e"] <= (v["i"] + v["o"]))
-            .parameter("n", number)
+            .parameter("n", number_nodes)
             .suffix(
                 ((Constructor("DAG_component",
                               Constructor("input", Var("i"))
@@ -524,14 +527,15 @@ class NASBench101_Repo:
             .parameter("o", dimension)
             .parameter("o1", dimension)
             .parameter("o2", dimension, lambda v: [v["o"] - v["o1"]])
-            .parameter("e", number)
+            .parameter("e", number_edges)
             .parameter_constraint(lambda v: v["i"] <= v["e"] <= (v["i"] + v["o"]))
-            .parameter("e1", number)
+            .parameter("e1", number_edges)
             .parameter_constraint(lambda v: v["i1"] <= v["e1"] <= (v["i1"] + v["o1"]))
-            .parameter("e2", number, lambda v: [v["e"] - v["e1"]])
-            .parameter("n", number)
-            .parameter("n1", number)
-            .parameter("n2", number, lambda v: [v["n"] - v["n1"]])
+            .parameter("e2", number_edges, lambda v: [v["e"] - v["e1"]])
+            .parameter("n", number_nodes)
+            .parameter("n1", number_nodes)
+            .parameter_constraint(lambda v: v["n1"] <= v["n"])
+            .parameter("n2", number_nodes, lambda v: [v["n"] - v["n1"]])
             .suffix(
                     ((Constructor("DAG_component",
                                   Constructor("input", Var("i1"))
@@ -618,9 +622,9 @@ class NASBench101_Repo:
             "before_singleton": SpecificationBuilder()
             .parameter("i", dimension)
             .parameter("o", dimension)
-            .parameter("e", number)
+            .parameter("e", number_edges)
             .parameter_constraint(lambda v: v["i"] <= v["e"] <= (v["i"] + v["o"]))
-            .parameter("n", number)
+            .parameter("n", number_nodes)
             .argument("x", Constructor("DAG_parallel",
                                        Constructor("input", Var("i"))
                                        & Constructor("output", Var("o"))
@@ -633,21 +637,24 @@ class NASBench101_Repo:
                                 & Constructor("output", Var("o"))
                                 & Constructor("output", Literal(None))
                                 & Constructor("number_of_edges", Var("e"))
+                                & Constructor("number_of_edges", Literal(None))
                                 & Constructor("number_of_nodes", Var("n"))
+                                & Constructor("number_of_nodes", Literal(None))
                                 )),
 
             "before_cons": SpecificationBuilder()
             .parameter("i", dimension)
             .parameter("j", dimension)
             .parameter("o", dimension)
-            .parameter("e", number)
+            .parameter("e", number_edges)
             .parameter_constraint(lambda v: v["i"] <= v["e"] <= (v["i"] + v["o"]))
-            .parameter("e1", number)
+            .parameter("e1", number_edges)
             .parameter_constraint(lambda v: v["i"] <= v["e1"] <= (v["i"] + v["j"]))
-            .parameter("e2", number, lambda v: [v["e"] - v["e1"] + v["j"]])
-            .parameter("n", number)
-            .parameter("n1", number)
-            .parameter("n2", number, lambda v: [v["n"] - v["n1"]])
+            .parameter("e2", number_edges, lambda v: [v["e"] - v["e1"] + v["j"]])
+            .parameter("n", number_nodes)
+            .parameter("n1", number_nodes)
+            .parameter_constraint(lambda v: v["n1"] <= v["n"])
+            .parameter("n2", number_nodes, lambda v: [v["n"] - v["n1"]])
             .argument("x", Constructor("DAG_parallel",
                                        Constructor("input", Var("i"))
                                        & Constructor("output", Var("j"))
@@ -671,7 +678,9 @@ class NASBench101_Repo:
                                 & Constructor("output", Var("o"))
                                 & Constructor("output", Literal(None))
                                 & Constructor("number_of_edges", Var("e"))
+                                & Constructor("number_of_edges", Literal(None))
                                 & Constructor("number_of_nodes", Var("n"))
+                                & Constructor("number_of_nodes", Literal(None))
                                 )),
         }
 
@@ -720,13 +729,13 @@ class NASBench101_Repo:
 
 
 if __name__ == "__main__":
-    repo = NASBench101_Repo(["3x3Conv", "1x1Conv", "3x3MaxPool"])
+    repo = NASBench101_Repo(["3x3Conv", "1x1Conv", "3x3MaxPool"], max_number_edges=3, max_number_nodes=1, max_parallel_edges=3)
 
     target0 = Constructor("DAG",
                          Constructor("input", Literal(None))
                          & Constructor("output", Literal(None))
-                         & Constructor("number_of_edges", Literal(3))
-                         & Constructor("number_of_nodes", Literal(1))
+                         & Constructor("number_of_edges", Literal(None))
+                         & Constructor("number_of_nodes", Literal(None))
                          )
 
     target_parallel = Constructor("DAG_parallel",
@@ -743,7 +752,9 @@ if __name__ == "__main__":
     search_space = synthesizer.construct_search_space(target).prune()
     print("finish synthesis, start sampling")
 
-    terms = search_space.enumerate_trees(target, 100)
+    #terms = search_space.enumerate_trees(target, 1000)
+
+    terms = search_space.sample(10, target)
 
     terms = list(terms)
 
