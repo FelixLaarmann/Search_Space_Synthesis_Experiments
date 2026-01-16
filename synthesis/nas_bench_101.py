@@ -1,8 +1,10 @@
 from cl3s import (SpecificationBuilder, Constructor, Literal, Var, Group, DataGroup,
                   DerivationTree, SearchSpaceSynthesizer)
 from typing import Any
-
-
+import re
+import networkx as nx
+import matplotlib.pyplot as plt
+from itertools import accumulate
 
 class NASBench101_Repo:
     """
@@ -406,12 +408,15 @@ class NASBench101_Repo:
 
     def dag_constraint(self, head: DerivationTree[Any, str, Any], tail: DerivationTree[Any, str, Any], i : int) -> bool:
         x = head.interpret(self.edgelist_algebra())
-        y = tail.interpret(self.edgelist_algebra())
+        y, inputs = tail.interpret(self.edgelist_algebra())
         id = (0,0)
-        inputs = ["input" for _ in range(0,i)]
-        edgelist = y[0]((id[0] + 2.5, id[1]), x(id, inputs)[1])[0]
+        x_inputs = ["input" for _ in range(0,i)]
+        test_x = x(id, x_inputs)
+        edgelist, to_outputs, pos_A = y((id[0] + 2.5, id[1]), test_x[1])
+        edgelist = edgelist + test_x[0] + [(o, "output") for o in to_outputs]
         edgeset = set(edgelist)
-        return len(edgelist) == len(edgeset)
+        test = len(edgelist) == len(edgeset)
+        return test
 
 
     def specification(self):
@@ -709,16 +714,16 @@ class NASBench101_Repo:
 
             "swap": (lambda io, n, m, e: lambda id, inputs: ([], inputs[n:] + inputs[:n], {})),
 
-            "node": (lambda l, i, o, e: lambda id, inputs: ([(x,str((l, i, o)) + str(id)) for x in inputs],  [str((l, i, o)) + str(id) for _ in range(0,o)], {str((l, i, o)) + str(id) : id})),
+            "node": (lambda l, i, o, e: lambda id, inputs: ([(x, str((l, i, o)) + str(id)) for x in inputs],  [str((l, i, o)) + str(id) for _ in range(0,o)], {str((l, i, o)) + str(id) : id})),
 
-            "beside_singleton": (lambda i, o, e, n, x: x),
+            "beside_singleton": (lambda i, o, e, n, x: lambda id, inputs: x(id, inputs)),
 
             "beside_cons": (lambda i, i1, i2, o, o1, o2, e, e1, e2, n, n1, n2, x, y: lambda id, inputs:
                 (x(id, inputs[:i1])[0] + y((id[0], id[1] + 0.2), inputs[i1:])[0],
                  x(id, inputs[:i1])[1] + y((id[0], id[1] + 0.2), inputs[i1:])[1],
                  x(id, inputs[:i1])[2] | y((id[0], id[1] + 0.2), inputs[i1:])[2])),
 
-            "before_singleton": (lambda i, o, e, n, x: (x, i)),
+            "before_singleton": (lambda i, o, e, n, x: (lambda id, inputs: x(id, inputs), i)),
 
             "before_cons": (lambda i, j, o, e, e1, e2, n, n1, n2, x, y: (lambda id, inputs:
                                                                       (y[0]((id[0] + 2.5, id[1]), x(id, inputs)[1])[0] + x(id, inputs)[0],
@@ -735,7 +740,7 @@ if __name__ == "__main__":
                          Constructor("input", Literal(None))
                          & Constructor("output", Literal(None))
                          & Constructor("number_of_edges", Literal(None))
-                         & Constructor("number_of_nodes", Literal(None))
+                         & Constructor("number_of_nodes", Literal(1))
                          )
 
     target_parallel = Constructor("DAG_parallel",
@@ -752,9 +757,9 @@ if __name__ == "__main__":
     search_space = synthesizer.construct_search_space(target).prune()
     print("finish synthesis, start sampling")
 
-    #terms = search_space.enumerate_trees(target, 1000)
+    terms = search_space.enumerate_trees(target, 30)
 
-    terms = search_space.sample(10, target)
+    #terms = search_space.sample(10, target)
 
     terms = list(terms)
 
@@ -762,3 +767,30 @@ if __name__ == "__main__":
 
     for t in terms:
         print(t.interpret(repo.pretty_term_algebra()))
+        f, inputs = t.interpret(repo.edgelist_algebra())
+        edgelist, to_outputs, pos_A = f((-3.8, -3.8), ["input" for _ in range(0, inputs)])
+        edgelist = edgelist + [(o, "output") for o in to_outputs]
+
+        G = nx.MultiDiGraph()
+        G.add_edges_from(edgelist)
+
+        pos_A = pos_A | {"input": (-5.5, -3.8), "output": (max([x for x, y in pos_A.values()]) + 2.5, -3.8)}
+
+        relabel = {n: re.sub("[)][(][-]*[0-9]*[.][0-9]*[,]\s[-]*[0-9]*[.][0-9]*[)]", ")", n)
+                   for n in G.nodes()}
+
+        for n in G.nodes():
+            G.nodes[n]['symbol'] = relabel[n]
+
+        connectionstyle = [f"arc3,rad={r}" for r in accumulate([0.3] * 4)]
+
+        plt.figure(figsize=(25, 25))
+
+        node_size = 3000
+        nx.draw_networkx_nodes(G, pos_A, node_size=node_size, node_color='lightblue', alpha=0.5, margins=0.05)
+        nx.draw_networkx_labels(G, pos_A, labels=relabel, font_size=6, font_weight="bold")
+        nx.draw_networkx_edges(G, pos_A, edge_color="black", connectionstyle=connectionstyle, node_size=node_size,
+                               width=2)
+        plt.figtext(0.01, 0.02, t.interpret(repo.pretty_term_algebra()), fontsize=14)
+
+        plt.show()
