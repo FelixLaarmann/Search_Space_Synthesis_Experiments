@@ -91,6 +91,7 @@ target_from_trapezoid1 = Constructor("Learner", Constructor("DAG",
                                                                     None, 
                                                                     None, 
                                                                     None, 
+                                                                    None,
                                                                     None, 
                                                                     (
                                                                         None,
