@@ -71,17 +71,25 @@ target_trapezoid = Constructor("Learner", Constructor("DAG",
                                & Constructor("epochs", Literal(10000))
                                )
 """
+""" 
+None,
+None,  # left, split, right
+None,  # left, gate, right
+None,  # left_out, -gate, right
+None,  # left_out, 1-gate, right
+None,  # left_out, right_out
+None 
+""" 
 target_from_trapezoid1 = Constructor("Learner", Constructor("DAG",
                                                             Constructor("input", Literal(1))
                                                             & Constructor("output", Literal(1))
                                                             & Constructor("structure", Literal(
                                                                 (
-                                                                    None,
-                                                                    None,  # left, split, right
-                                                                    None,  # left, gate, right
-                                                                    None,  # left_out, -gate, right
-                                                                    None,  # left_out, 1-gate, right
-                                                                    None,  # left_out, right_out
+                                                                    None, 
+                                                                    None, 
+                                                                    None, 
+                                                                    None, 
+                                                                    None, 
                                                                     None
                                                                 )
                                                             )))
