@@ -1263,8 +1263,8 @@ class ODE_1_Repository:
             .parameter("i", dimension)
             .parameter("o", dimension)
             .parameter("ls", paratuples)
-            .parameter_constraint(lambda v: v["ls"] is not None and len(v["ls"]) == 1)
-            .parameter("para", para_labels, lambda v: [v["ls"][0]])
+            .parameter_constraint(lambda v: v["ls"] is None or len(v["ls"]) == 1)
+            .parameter("para", para_labels, lambda v: [None] if v["ls"] is None else [v["ls"][0]])
             .parameter_constraint(lambda v: (len(v["para"]) == 3 and
                                              (v["para"][1] == v["i"] if v["para"][1] is not None else True) and
                                              (v["para"][2] == v["o"] if v["para"][2] is not None else True)
@@ -1283,7 +1283,7 @@ class ODE_1_Repository:
                                 & Constructor("output", Var("o"))
                                 & Constructor("output", Literal(None))
                                 & Constructor("structure", Var("ls"))
-                                & Constructor("structure", Literal(None))
+                                #& Constructor("structure", Literal(None))
                                 )
                   & Constructor("non_ID") & Constructor("last", Constructor("non_ID"))
                   )
@@ -1302,7 +1302,7 @@ class ODE_1_Repository:
                                 & Constructor("output", Var("o"))
                                 & Constructor("output", Literal(None))
                                 & Constructor("structure", Var("ls"))
-                                & Constructor("structure", Literal(None))
+                                #& Constructor("structure", Literal(None))
                                 )
                      & Constructor("ID")
                      )
@@ -1316,12 +1316,12 @@ class ODE_1_Repository:
             .parameter("o1", dimension)
             .parameter("o2", dimension, lambda v: [v["o"] - v["o1"]])
             .parameter("ls", paratuples)
-            .parameter_constraint(lambda v: v["ls"] is not None and len(v["ls"]) > 1)
-            .parameter("head", para_labels, lambda v: [v["ls"][0]])
+            .parameter_constraint(lambda v: v["ls"] is None or len(v["ls"]) > 1)
+            .parameter("head", para_labels, lambda v: [None] if v["ls"] is None else [v["ls"][0]])
             .parameter_constraint(lambda v: v["head"] is None or (len(v["head"]) == 3 and
                                                                   (v["head"][1] == v["i1"] or v["head"][1] is None) and
                                                                   (v["head"][2] == v["o1"] or v["head"][2] is None)))
-            .parameter("tail", paratuples, lambda v: [v["ls"][1:]])
+            .parameter("tail", paratuples, lambda v: [None] if v["ls"] is None else [v["ls"][1:]])
             .suffix(
                     ((Constructor("DAG_component",
                                        Constructor("input", Var("i1"))
@@ -1341,7 +1341,7 @@ class ODE_1_Repository:
                                 & Constructor("output", Var("o"))
                                 & Constructor("output", Literal(None))
                                 & Constructor("structure", Var("ls"))
-                                & Constructor("structure", Literal(None))
+                                #& Constructor("structure", Literal(None))
                                 )
                       & Constructor("non_ID") & Constructor("last", Constructor("ID")))
                      )
@@ -1364,7 +1364,7 @@ class ODE_1_Repository:
                                   & Constructor("output", Var("o"))
                                   & Constructor("output", Literal(None))
                                   & Constructor("structure", Var("ls"))
-                                  & Constructor("structure", Literal(None))
+                                  #& Constructor("structure", Literal(None))
                                   )
                       & Constructor("non_ID") & Constructor("last", Constructor("non_ID")))
                      )
@@ -1387,7 +1387,7 @@ class ODE_1_Repository:
                                   & Constructor("output", Var("o"))
                                   & Constructor("output", Literal(None))
                                   & Constructor("structure", Var("ls"))
-                                  & Constructor("structure", Literal(None))
+                                  #& Constructor("structure", Literal(None))
                                   )
                       & Constructor("non_ID") & Constructor("last", Constructor("non_ID")))
                      )
@@ -2047,7 +2047,7 @@ if __name__ == "__main__":
                           Constructor("input", Literal(1))
                           & Constructor("output", Literal(1))
                           & Constructor("structure", Literal(
-                              (None, None, None)
+                              (None, None, None, None, None, None, None)
                           )))
                                 & Constructor("Loss", Constructor("type", Literal(repo.MSEloss())))
                                 & Constructor("Optimizer", Constructor("type", Literal(repo.Adam(1e-2))))
@@ -2137,13 +2137,13 @@ if __name__ == "__main__":
                                          & Constructor("epochs", Literal(10000))
                                          )
 
-    target = target_from_trapezoid2
+    target = target_max_seq_3
     synthesizer = SearchSpaceSynthesizer(repo.specification(), {})
 
     search_space = synthesizer.construct_search_space(target).prune()
     print("finish synthesis, start sampling")
 
-    #terms =  search_space.enumerate_trees(target, 10)
+    #terms =  search_space.enumerate_trees(target, 1000)
 
     terms = search_space.sample(100, target)
 
@@ -2156,6 +2156,9 @@ if __name__ == "__main__":
     print(target)
 
     print(f"number of terms: {len(terms_list)}")
+
+    for t in terms_list:
+        print(t.interpret(repo.pretty_term_algebra()))
 
     class TrapezoidNetPure(nn.Module):
         def __init__(self, random_weights=False, sharpness=None):
@@ -2203,9 +2206,9 @@ if __name__ == "__main__":
     def f_obj(t):
         learner = t.interpret(repo.pytorch_function_algebra())
         return learner(x, y, x_test, y_test)
-
+    """
     for t in terms_list:
         print(t.interpret(repo.pretty_term_algebra()))
         learner = t.interpret(repo.pytorch_function_algebra())
         print("Test Loss: " + str(learner(x, y, x_test, y_test)))
-
+    """
