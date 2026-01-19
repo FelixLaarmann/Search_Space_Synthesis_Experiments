@@ -254,7 +254,10 @@ if __name__ == "__main__":
 
     synthesizer = SearchSpaceSynthesizer(repo.specification(), {})
 
-    search_space = synthesizer.construct_search_space(target).prune()
+    try:
+        search_space = synthesizer.construct_search_space(target).prune()
+    except MemoryError:
+        print(f'Out of Memory Error')
     print("finished synthesis")
 
     with open(f'results/search_space_{EXPERIMENT_NUMBER}.pkl', 'wb') as f: 
