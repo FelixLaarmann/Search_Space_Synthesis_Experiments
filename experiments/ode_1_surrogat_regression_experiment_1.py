@@ -16,6 +16,7 @@ from scipy.stats import pearsonr, spearmanr, kendalltau
 from itertools import islice
 import dill
 import sys 
+import time 
 
 EXPERIMENT_NUMBER = "S1"
 
@@ -254,13 +255,15 @@ if __name__ == "__main__":
     target = target_from_trapezoid1
 
     synthesizer = SearchSpaceSynthesizer(repo.specification(), {})
-
+    start = time.time()
     try:
         search_space = synthesizer.construct_search_space(target).prune()
     except MemoryError:
         print(f'Out of Memory Error')
-    print(f"finished synthesis: {sys.getsizeof(search_space) / (1024**2):.2f} MB")
+    end = time.time() 
 
+    print(f"finished synthesis: {sys.getsizeof(search_space) / (1024**2):.2f} MB")
+    print(f'Elapsed Time: {end - start}')
     with open(f'results/search_space_{EXPERIMENT_NUMBER}.pkl', 'wb') as f: 
         dill.dump(search_space, f)
 
