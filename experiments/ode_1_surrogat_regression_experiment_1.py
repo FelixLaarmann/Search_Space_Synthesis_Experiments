@@ -85,18 +85,13 @@ target_from_trapezoid1 = Constructor("Learner", Constructor("DAG",
                                                             & Constructor("output", Literal(1))
                                                             & Constructor("structure", Literal(
                                                                 (
-                                                                    (
-                                                                        (None),
-                                                                    ),
+                                                                    None,
                                                                     None, 
                                                                     # None, 
                                                                     # None, 
                                                                     # None,
                                                                     # None, 
-                                                                    (
-                                                                        (None),
-                                                                    )
-                                                                )
+                                                                    None                                                                )
                                                             )))
                                      & Constructor("Loss", Constructor("type", Literal(None)))
                                      & Constructor("Optimizer", Constructor("type", Literal(repo.Adam(1e-2))))
