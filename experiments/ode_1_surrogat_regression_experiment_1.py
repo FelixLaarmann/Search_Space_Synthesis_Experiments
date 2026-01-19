@@ -86,17 +86,19 @@ target_from_trapezoid1 = Constructor("Learner", Constructor("DAG",
                                                             & Constructor("structure", Literal(
                                                                 (
                                                                     None,
-                                                                    None, 
-                                                                    # None, 
-                                                                    # None, 
-                                                                    # None,
-                                                                    # None, 
-                                                                    None                                                                )
+                                                                    None,  # left, split, right
+                                                                    #None,  # left, gate, right
+                                                                    #None,  # left_out, -gate, right
+                                                                    #None,  # left_out, 1-gate, right
+                                                                    #None,  # left_out, right_out
+                                                                    #None
+                                                                )
                                                             )))
                                      & Constructor("Loss", Constructor("type", Literal(None)))
                                      & Constructor("Optimizer", Constructor("type", Literal(repo.Adam(1e-2))))
                                      & Constructor("epochs", Literal(10000))
                                      )
+
 
 target_from_trapezoid2 = Constructor("Learner", Constructor("DAG",
                                                             Constructor("input", Literal(1))
