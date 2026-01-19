@@ -86,15 +86,15 @@ target_from_trapezoid1 = Constructor("Learner", Constructor("DAG",
                                                             & Constructor("structure", Literal(
                                                                 (
                                                                     (
-                                                                        (None, 1, 3),
+                                                                        (None),
                                                                     ),
                                                                     None, 
-                                                                    None, 
-                                                                    None, 
-                                                                    None,
-                                                                    None, 
+                                                                    # None, 
+                                                                    # None, 
+                                                                    # None,
+                                                                    # None, 
                                                                     (
-                                                                        (None, 2, 1),
+                                                                        (None),
                                                                     )
                                                                 )
                                                             )))
