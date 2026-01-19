@@ -94,9 +94,9 @@ target_from_trapezoid1 = Constructor("Learner", Constructor("DAG",
                                                                     None,  # left, split, right
                                                                     None,  # left, gate, right
                                                                     None,  # left_out, -gate, right
-                                                                    #None,  # left_out, 1-gate, right
-                                                                    #None,  # left_out, right_out
-                                                                    #None
+                                                                    None,  # left_out, 1-gate, right
+                                                                    None,  # left_out, right_out
+                                                                    None
                                                                 )
                                                             )))
                                      & Constructor("Loss", Constructor("type", Literal(None)))
@@ -262,7 +262,7 @@ if __name__ == "__main__":
         print(f'Out of Memory Error')
     end = time.time() 
 
-    print(f"finished synthesis: {sys.getsizeof(search_space) / (1024**2):.2f} MB")
+    print(f"finished synthesis: {sys.getsizeof(search_space)} MB")
     print(f'Elapsed Time: {end - start}')
     with open(f'results/search_space_{EXPERIMENT_NUMBER}.pkl', 'wb') as f: 
         dill.dump(search_space, f)
