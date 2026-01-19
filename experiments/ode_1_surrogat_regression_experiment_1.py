@@ -21,8 +21,11 @@ EXPERIMENT_NUMBER = "S1"
 
 
 
-repo = ODE_1_Repository(linear_feature_dimensions=[1, 2, 3], constant_values=[0, 1, -1], learning_rate_values=[1e-2],
-                        n_epoch_values=[10000], dimensions=[1,2,3,4])
+# repo = ODE_1_Repository(linear_feature_dimensions=[1, 2, 3], constant_values=[0, 1, -1], learning_rate_values=[1e-2],
+#                         n_epoch_values=[10000], dimensions=[1,2,3,4])
+
+repo = ODE_1_Repository(linear_feature_dimensions=[1, 2], constant_values=[0, 1,],
+                        learning_rate_values=[1e-2], n_epoch_values=[10000])
 
 edge = (("swap", 0, 1), 1, 1)
 
@@ -88,8 +91,8 @@ target_from_trapezoid1 = Constructor("Learner", Constructor("DAG",
                                                                 (
                                                                     None,
                                                                     None,  # left, split, right
-                                                                    #None,  # left, gate, right
-                                                                    #None,  # left_out, -gate, right
+                                                                    None,  # left, gate, right
+                                                                    None,  # left_out, -gate, right
                                                                     #None,  # left_out, 1-gate, right
                                                                     #None,  # left_out, right_out
                                                                     #None
