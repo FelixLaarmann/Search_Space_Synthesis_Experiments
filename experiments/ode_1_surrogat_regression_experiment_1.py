@@ -22,11 +22,11 @@ EXPERIMENT_NUMBER = "S1"
 
 
 
-# repo = ODE_1_Repository(linear_feature_dimensions=[1, 2, 3], constant_values=[0, 1, -1], learning_rate_values=[1e-2],
-#                         n_epoch_values=[10000], dimensions=[1,2,3,4])
+repo = ODE_1_Repository(linear_feature_dimensions=[1, 2, 3], constant_values=[0, 1, -1], learning_rate_values=[1e-2],
+                        n_epoch_values=[10000], dimensions=[1,2,3,4])
 
-repo = ODE_1_Repository(linear_feature_dimensions=[1, 2], constant_values=[0, 1,],
-                        learning_rate_values=[1e-2], n_epoch_values=[10000])
+#repo = ODE_1_Repository(linear_feature_dimensions=[1, 2], constant_values=[0, 1,],
+#                        learning_rate_values=[1e-2], n_epoch_values=[10000])
 
 edge = (("swap", 0, 1), 1, 1)
 
@@ -264,7 +264,7 @@ if __name__ == "__main__":
 
     print(f"finished synthesis: {sys.getsizeof(search_space)} MB")
     print(f'Elapsed Time: {end - start}')
-    with open(f'results/search_space_{EXPERIMENT_NUMBER}.pkl', 'wb') as f: 
+    with open(f'results/search_space_{EXPERIMENT_NUMBER}.pkl', 'wb') as f:
         dill.dump(search_space, f)
 
     """
@@ -327,7 +327,14 @@ if __name__ == "__main__":
 
     #print("data generated")
 
+    x_trained = []
+    y_trained = []
+
     for idx, (x_gp_i, y_gp_i) in enumerate(zip(x_gp_train, y_gp_train)):
+
+        x_trained = x_trained + list(x_gp_i)
+        y_trained = y_trained + list(y_gp_i)
+
         K1 = kernel1(x_gp_i)
         D1 = kernel1.diag(x_gp_i)
 
@@ -340,8 +347,7 @@ if __name__ == "__main__":
         plt.savefig(f'plots/term_sim_k1_{idx}_{EXPERIMENT_NUMBER}.pdf')
         plt.close()
 
-
-        gp1.fit(x_gp_i, y_gp_i)
+        gp1.fit(x_trained, y_trained)
 
         y_pred_next, sigma_next = gp1.predict(x_gp_test, return_std=True)
 
@@ -363,7 +369,7 @@ if __name__ == "__main__":
         plt.close()
 
 
-        gp2.fit(x_gp_i, y_gp_i)
+        gp2.fit(x_trained, y_trained)
 
         y_pred_next, sigma_next = gp2.predict(x_gp_test, return_std=True)
         y_preds_gp2.append(y_pred_next)
@@ -383,7 +389,7 @@ if __name__ == "__main__":
         plt.savefig(f'plots/term_sim_k3_{idx}_{EXPERIMENT_NUMBER}.pdf')
         plt.close()
 
-        gp3.fit(x_gp_i, y_gp_i)
+        gp3.fit(x_trained, y_trained)
 
         y_pred_next, sigma_next = gp3.predict(x_gp_test, return_std=True)
 
@@ -397,7 +403,7 @@ if __name__ == "__main__":
 
         ##################
 
-    plt.plot(range(train_size, (plot_resolution + 1)*train_size, train_size), kts_gp1, linestyle="dotted")
+    plt.plot(range(slice_size, train_size + slice_size, slice_size), kts_gp1, linestyle="dotted")
     plt.xlabel("# of samples")
     plt.ylabel("tau")
     _ = plt.title("Kendall Tau correlation for GP with kernel1")
@@ -405,7 +411,7 @@ if __name__ == "__main__":
     plt.savefig(f'plots/ktau_k1_{EXPERIMENT_NUMBER}.pdf')
     plt.close()
 
-    plt.plot(range(train_size, (plot_resolution + 1)*train_size, train_size), pears_gp1, linestyle="dotted")
+    plt.plot(range(slice_size, train_size + slice_size, slice_size), pears_gp1, linestyle="dotted")
     plt.xlabel("# of samples")
     plt.ylabel("p")
     _ = plt.title("Pearson correlation for GP with kernel1")
@@ -413,7 +419,7 @@ if __name__ == "__main__":
     plt.savefig(f'plots/pc_k2_{EXPERIMENT_NUMBER}.pdf')
     plt.close()
 
-    plt.plot(range(train_size, (plot_resolution + 1) * train_size, train_size), kts_gp2, linestyle="dotted")
+    plt.plot(range(slice_size, train_size + slice_size, slice_size), kts_gp2, linestyle="dotted")
     plt.xlabel("# of samples")
     plt.ylabel("tau")
     _ = plt.title("Kendall Tau correlation for GP with kernel2")
@@ -421,7 +427,7 @@ if __name__ == "__main__":
     plt.savefig(f'plots/ktau_k2_{EXPERIMENT_NUMBER}.pdf')
     plt.close()
 
-    plt.plot(range(train_size, (plot_resolution + 1) * train_size, train_size), pears_gp2, linestyle="dotted")
+    plt.plot(range(slice_size, train_size + slice_size, slice_size), pears_gp2, linestyle="dotted")
     plt.xlabel("# of samples")
     plt.ylabel("p")
     _ = plt.title("Pearson correlation for GP with kernel2")
@@ -429,7 +435,7 @@ if __name__ == "__main__":
     plt.savefig(f'plots/pc_k2_{EXPERIMENT_NUMBER}.pdf')
     plt.close()
 
-    plt.plot(range(train_size, (plot_resolution + 1) * train_size, train_size), kts_gp3, linestyle="dotted")
+    plt.plot(range(slice_size, train_size + slice_size, slice_size), kts_gp3, linestyle="dotted")
     plt.xlabel("# of samples")
     plt.ylabel("tau")
     _ = plt.title("Kendall Tau correlation for GP with kernel3")
@@ -437,7 +443,7 @@ if __name__ == "__main__":
     plt.savefig(f'plots/ktau_k3_{EXPERIMENT_NUMBER}.pdf')
     plt.close()
 
-    plt.plot(range(train_size, (plot_resolution + 1) * train_size, train_size), pears_gp3, linestyle="dotted")
+    plt.plot(range(slice_size, train_size + slice_size, slice_size), pears_gp3, linestyle="dotted")
     plt.xlabel("# of samples")
     plt.ylabel("p")
     _ = plt.title("Pearson correlation for GP with kernel3")

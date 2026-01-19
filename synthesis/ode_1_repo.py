@@ -2145,7 +2145,7 @@ if __name__ == "__main__":
 
     #terms =  search_space.enumerate_trees(target, 1000)
 
-    terms = search_space.sample(100, target)
+    terms = search_space.sample(10, target)
 
     terms_list = list(terms)
 
@@ -2156,9 +2156,10 @@ if __name__ == "__main__":
     print(target)
 
     print(f"number of terms: {len(terms_list)}")
-
+    """
     for t in terms_list:
         print(t.interpret(repo.pretty_term_algebra()))
+    """
 
     class TrapezoidNetPure(nn.Module):
         def __init__(self, random_weights=False, sharpness=None):
@@ -2206,9 +2207,9 @@ if __name__ == "__main__":
     def f_obj(t):
         learner = t.interpret(repo.pytorch_function_algebra())
         return learner(x, y, x_test, y_test)
-    """
+
     for t in terms_list:
         print(t.interpret(repo.pretty_term_algebra()))
         learner = t.interpret(repo.pytorch_function_algebra())
         print("Test Loss: " + str(learner(x, y, x_test, y_test)))
-    """
+

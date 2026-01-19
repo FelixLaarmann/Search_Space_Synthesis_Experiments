@@ -295,7 +295,13 @@ if __name__ == "__main__":
 
     #print("data generated")
 
+    x_trained = []
+    y_trained = []
+
     for idx, (x_gp_i, y_gp_i) in enumerate(zip(x_gp_train, y_gp_train)):
+
+        x_trained = x_trained + list(x_gp_i)
+        y_trained = y_trained + list(y_gp_i)
 
         K3 = kernel3(x_gp_i)
         D3 = kernel3.diag(x_gp_i)
@@ -309,7 +315,7 @@ if __name__ == "__main__":
         plt.savefig(f'plots/term_sim_k3_{idx}_{EXPERIMENT_NUMBER}.pdf')
         plt.close()
 
-        gp3.fit(x_gp_i, y_gp_i)
+        gp3.fit(x_trained, y_trained)
 
         y_pred_next, sigma_next = gp3.predict(x_gp_test, return_std=True)
         y_preds_gp3.append(y_pred_next)
@@ -322,7 +328,7 @@ if __name__ == "__main__":
 
         ##################
 
-    plt.plot(range(train_size, (plot_resolution + 1) * train_size, train_size), kts_gp3, linestyle="dotted")
+    plt.plot(range(slice_size, train_size + slice_size, slice_size), kts_gp3, linestyle="dotted")
     plt.xlabel("# of samples")
     plt.ylabel("tau")
     _ = plt.title("Kendall Tau correlation for GP with kernel3")
@@ -330,7 +336,7 @@ if __name__ == "__main__":
     plt.savefig(f'plots/ktau_k3_{EXPERIMENT_NUMBER}.pdf')
     plt.close()
 
-    plt.plot(range(train_size, (plot_resolution + 1) * train_size, train_size), pears_gp3, linestyle="dotted")
+    plt.plot(range(slice_size, train_size + slice_size, slice_size), pears_gp3, linestyle="dotted")
     plt.xlabel("# of samples")
     plt.ylabel("p")
     _ = plt.title("Pearson correlation for GP with kernel3")
