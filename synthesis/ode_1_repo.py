@@ -2212,4 +2212,3 @@ if __name__ == "__main__":
         print(t.interpret(repo.pretty_term_algebra()))
         learner = t.interpret(repo.pytorch_function_algebra())
         print("Test Loss: " + str(learner(x, y, x_test, y_test)))
-

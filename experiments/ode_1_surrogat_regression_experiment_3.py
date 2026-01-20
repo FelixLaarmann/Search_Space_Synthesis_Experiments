@@ -1,5 +1,6 @@
 from cl3s import (SpecificationBuilder, Constructor, Literal, Var, Group, DataGroup,
-                  DerivationTree, SearchSpaceSynthesizer, BayesianOptimization, WeisfeilerLehmanKernel)
+                  DerivationTree, SearchSpaceSynthesizer, BayesianOptimization,
+                  WeisfeilerLehmanKernel, OptimizableHierarchicalWeisfeilerLehmanKernel)
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -255,8 +256,16 @@ if __name__ == "__main__":
     """
 
     kernel3 = WeisfeilerLehmanKernel(n_iter=1, to_grakel_graph=to_grakel_graph_3)
+    hkernel = OptimizableHierarchicalWeisfeilerLehmanKernel(to_grakel_graph1=to_grakel_graph_1,
+                                                            to_grakel_graph2=to_grakel_graph_2,
+                                                            to_grakel_graph3=to_grakel_graph_3,
+                                                            weight1=0.4, weight2=0.3, weight3=0.3,
+                                                            n_iter1=1, n_iter2=1, n_iter3=1)
 
     gp3 = GaussianProcessRegressor(kernel=kernel3, optimizer=None, normalize_y=False)
+    # the hierarchical kernel has hyperparameters, which can be optimized while fitting the GP
+    gp_h = GaussianProcessRegressor(kernel=hkernel, optimizer=hkernel.optimize_hyperparameter, n_restarts_optimizer=2,
+                                    normalize_y=False)
 
     # Load pre generated data for the training
     data = torch.load('data/TrapezoidNet.pth')
@@ -290,8 +299,12 @@ if __name__ == "__main__":
     y_gp_train = [np.array(y_gp[i:i + slice_size]) for i in range(0, train_size, slice_size)] #[y_gp_train_1, y_gp_train_2, y_gp_train_3, y_gp_train_4, y_gp_train_5, y_gp_train_6, y_gp_train_7, y_gp_train_8]
     y_preds_gp3 = []
     y_sigmas_gp3 = []
+    y_preds_gp_h = []
+    y_sigmas_gp_h = []
     pears_gp3 = []
     kts_gp3 = []
+    pears_gp_h = []
+    kts_gp_h = []
 
     #print("data generated")
 
@@ -323,10 +336,55 @@ if __name__ == "__main__":
 
         pears_gp3.append(pearsonr(y_gp_test, y_pred_next)[0])
         kts_gp3.append(kendalltau(y_gp_test, y_pred_next)[0])
-        ################## Save Kernels
-        np.savez_compressed(f'results/kernels_{idx}_{EXPERIMENT_NUMBER}.npz', k3=K3, d3=D3) 
 
+        # Hierarchical kernel with initial hyperparameters
+        K_h = hkernel(x_gp_i)
+        D_h = hkernel.diag(x_gp_i)
+
+        plt.figure(figsize=(8, 5))
+        plt.imshow(np.diag(D3 ** -0.5).dot(K3).dot(np.diag(D3 ** -0.5)))
+        plt.xticks(np.arange(len(x_gp_i)), range(1, len(x_gp_i) + 1))
+        plt.yticks(np.arange(len(x_gp_i)), range(1, len(x_gp_i) + 1))
+        plt.title("Term similarity under the unfitted hierarchical kernel")
+        plt.savefig(f'plots/term_sim_k3_{idx}_{EXPERIMENT_NUMBER}.png')
+        plt.savefig(f'plots/term_sim_k3_{idx}_{EXPERIMENT_NUMBER}.pdf')
+        plt.close()
+
+        # Hierarchical kernel with fitted hyperparameters from the last iteration
+        K_h_fitted = gp_h.kernel_(x_gp_i)
+        D_h_fitted = gp_h.kernel_.diag(x_gp_i)
+
+        hyperparameters_fitted = gp_h.kernel_.hyperparameters
+        """
+        For the first iteration, hyperparameters are the initial ones and K_h_fitted, D_h_fitted are the same as 
+        K_h, D_h.
+        For the following iterations, hyperparameters are the ones optimized from the last iteration and the 
+        kernel matrices will (hopefully) differ.
+        """
+
+        ################## Save Kernels
+        np.savez_compressed(f'results/kernels_{idx}_{EXPERIMENT_NUMBER}.npz', k3=K3, d3=D3,
+                            kh=K_h, dh=D_h, khfitted=K_h_fitted, dhfitted=D_h_fitted,
+                            hps=hyperparameters_fitted)
         ##################
+
+        plt.figure(figsize=(8, 5))
+        plt.imshow(np.diag(D3 ** -0.5).dot(K3).dot(np.diag(D3 ** -0.5)))
+        plt.xticks(np.arange(len(x_gp_i)), range(1, len(x_gp_i) + 1))
+        plt.yticks(np.arange(len(x_gp_i)), range(1, len(x_gp_i) + 1))
+        plt.title("Term similarity under the fitted hierarchical kernel from the last iteration")
+        plt.savefig(f'plots/term_sim_k3_{idx}_{EXPERIMENT_NUMBER}.png')
+        plt.savefig(f'plots/term_sim_k3_{idx}_{EXPERIMENT_NUMBER}.pdf')
+        plt.close()
+
+        gp_h.fit(x_trained, y_trained)
+
+        y_pred_next, sigma_next = gp_h.predict(x_gp_test, return_std=True)
+
+        y_preds_gp_h.append(y_pred_next)
+        y_sigmas_gp_h.append(sigma_next)
+        pears_gp_h.append(pearsonr(y_gp_test, y_pred_next)[0])
+        kts_gp_h.append(kendalltau(y_gp_test, y_pred_next)[0])
 
     plt.plot(range(slice_size, train_size + slice_size, slice_size), kts_gp3, linestyle="dotted")
     plt.xlabel("# of samples")
@@ -344,14 +402,34 @@ if __name__ == "__main__":
     plt.savefig(f'plots/pc_k3_{EXPERIMENT_NUMBER}.pdf')
     plt.close()
 
+    plt.plot(range(slice_size, train_size + slice_size, slice_size), kts_gp_h, linestyle="dotted")
+    plt.xlabel("# of samples")
+    plt.ylabel("tau")
+    _ = plt.title("Kendall Tau correlation for GP with hierarchical kernel (with HPO)")
+    plt.savefig(f'plots/ktau_k3_{EXPERIMENT_NUMBER}.png')
+    plt.savefig(f'plots/ktau_k3_{EXPERIMENT_NUMBER}.pdf')
+    plt.close()
+
+    plt.plot(range(slice_size, train_size + slice_size, slice_size), pears_gp_h, linestyle="dotted")
+    plt.xlabel("# of samples")
+    plt.ylabel("p")
+    _ = plt.title("Pearson correlation for GP with hierarchical kernel (with HPO)")
+    plt.savefig(f'plots/pc_k3_{EXPERIMENT_NUMBER}.png')
+    plt.savefig(f'plots/pc_k3_{EXPERIMENT_NUMBER}.pdf')
+    plt.close()
+
     # Save data
     regression_data = {
         'x_gp_train' : x_gp_train,
         'y_gp_train' : y_gp_train,
         'y_preds_gp3' : y_preds_gp3,
         'y_sigmas_gp3' : y_sigmas_gp3,
+        'y_preds_gp_h': y_preds_gp_h,
+        'y_sigmas_gp_h': y_sigmas_gp_h,
         'pears_gp3' : pears_gp3,
-        'kts_gp3' : kts_gp3
+        'kts_gp3' : kts_gp3,
+        'pears_gp_h': pears_gp_h,
+        'kts_gp_h': kts_gp_h
     }
 
     with open(f'results/regression_data_{EXPERIMENT_NUMBER}.pkl', 'wb') as f:
