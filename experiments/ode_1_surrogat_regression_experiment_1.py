@@ -438,8 +438,8 @@ if __name__ == "__main__":
 
         ################## Save Kernels
         np.savez_compressed(f'results/kernels_{idx}_{EXPERIMENT_NUMBER}.npz', k1=K1, d1=D1, k2=K2, d2=D2,
-                            k3=K3, d3=D3, kh=K_h, dh=D_h, khfitted=K_h_fitted, dhfitted=D_h_fitted,
-                            hps=hyperparameters_fitted)
+                            k3=K3, d3=D3, kh=K_h, dh=D_h, khfitted=K_h_fitted, dhfitted=D_h_fitted)
+                            #hps=hyperparameters_fitted)
 
         ##################
 
