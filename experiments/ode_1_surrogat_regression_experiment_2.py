@@ -383,10 +383,10 @@ if __name__ == "__main__":
         plt.close()
 
         # Hierarchical kernel with fitted hyperparameters from the last iteration
-        K_h_fitted = gp_h.kernel_(x_gp_i)
-        D_h_fitted = gp_h.kernel_.diag(x_gp_i)
+        K_h_fitted = gp_h.kernel(x_gp_i)
+        D_h_fitted = gp_h.kernel.diag(x_gp_i)
 
-        hyperparameters_fitted = gp_h.kernel_.hyperparameters
+        hyperparameters_fitted = gp_h.kernel.hyperparameters
         """
         For the first iteration, hyperparameters are the initial ones and K_h_fitted, D_h_fitted are the same as 
         K_h, D_h.
