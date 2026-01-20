@@ -345,8 +345,8 @@ if __name__ == "__main__":
 
         y_preds_gp2.append(y_pred_next)
         y_sigmas_gp2.append(sigma_next)
-        pears_gp2.append(pearsonr(y_gp_test, y_pred_next)[0])
-        kts_gp2.append(kendalltau(y_gp_test, y_pred_next)[0])
+        pears_gp2.append(pearsonr(y_gp_test, np.nan_to_num(y_pred_next))[0])
+        kts_gp2.append(kendalltau(y_gp_test, np.nan_to_num(y_pred_next))[0])
 
         K3 = kernel3(x_gp_i)
         D3 = kernel3.diag(x_gp_i)
@@ -366,8 +366,8 @@ if __name__ == "__main__":
 
         y_preds_gp3.append(y_pred_next)
         y_sigmas_gp3.append(sigma_next)
-        pears_gp3.append(pearsonr(y_gp_test, y_pred_next)[0])
-        kts_gp3.append(kendalltau(y_gp_test, y_pred_next)[0])
+        pears_gp3.append(pearsonr(y_gp_test, np.nan_to_num(y_pred_next))[0])
+        kts_gp3.append(kendalltau(y_gp_test, np.nan_to_num(y_pred_next))[0])
 
         # Hierarchical kernel with initial hyperparameters
         K_h = hkernel(x_gp_i)
@@ -414,8 +414,8 @@ if __name__ == "__main__":
 
         y_preds_gp_h.append(y_pred_next)
         y_sigmas_gp_h.append(sigma_next)
-        pears_gp_h.append(pearsonr(y_gp_test, y_pred_next)[0])
-        kts_gp_h.append(kendalltau(y_gp_test, y_pred_next)[0])
+        pears_gp_h.append(pearsonr(y_gp_test, np.nan_to_num(y_pred_next))[0])
+        kts_gp_h.append(kendalltau(y_gp_test, np.nan_to_num(y_pred_next))[0])
 
     plt.plot(range(slice_size, train_size + slice_size, slice_size), kts_gp2, linestyle="dotted")
     plt.xlabel("# of samples")

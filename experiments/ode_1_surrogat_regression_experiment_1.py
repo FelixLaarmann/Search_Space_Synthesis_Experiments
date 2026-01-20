@@ -316,7 +316,6 @@ if __name__ == "__main__":
     x_gp_test = np.array(x_gp[train_size:])
     y_gp_test = np.array(y_gp[train_size:])
 
-
     slice_size = int(train_size // plot_resolution)
 
     x_gp_train = [np.array(x_gp[i:i + slice_size]) for i in range(0, train_size, slice_size)] #[x_gp_train_1, x_gp_train_2, x_gp_train_3, x_gp_train_4, x_gp_train_5, x_gp_train_6, x_gp_train_7, x_gp_train_8]
@@ -355,7 +354,7 @@ if __name__ == "__main__":
         plt.imshow(np.diag(D1 ** -0.5).dot(K1).dot(np.diag(D1 ** -0.5)))
         plt.xticks(np.arange(len(x_gp_i)), range(1, len(x_gp_i) + 1))
         plt.yticks(np.arange(len(x_gp_i)), range(1, len(x_gp_i) + 1))
-        plt.title("Term similarity under the kernel2")
+        plt.title("Term similarity under the kernel1")
         plt.savefig(f'plots/term_sim_k1_{idx}_{EXPERIMENT_NUMBER}.png')
         plt.savefig(f'plots/term_sim_k1_{idx}_{EXPERIMENT_NUMBER}.pdf')
         plt.close()
@@ -366,8 +365,8 @@ if __name__ == "__main__":
 
         y_preds_gp1.append(y_pred_next)
         y_sigmas_gp1.append(sigma_next)
-        pears_gp1.append(pearsonr(y_gp_test, y_pred_next)[0])
-        kts_gp1.append(kendalltau(y_gp_test, y_pred_next)[0])
+        pears_gp1.append(pearsonr(y_gp_test, np.nan_to_num(y_pred_next))[0])
+        kts_gp1.append(kendalltau(y_gp_test, np.nan_to_num(y_pred_next))[0])
 
         K2 = kernel2(x_gp_i)
         D2 = kernel2.diag(x_gp_i)
@@ -387,8 +386,8 @@ if __name__ == "__main__":
         y_pred_next, sigma_next = gp2.predict(x_gp_test, return_std=True)
         y_preds_gp2.append(y_pred_next)
         y_sigmas_gp2.append(sigma_next)
-        pears_gp2.append(pearsonr(y_gp_test, y_pred_next)[0])
-        kts_gp2.append(kendalltau(y_gp_test, y_pred_next)[0])
+        pears_gp2.append(pearsonr(y_gp_test, np.nan_to_num(y_pred_next))[0])
+        kts_gp2.append(kendalltau(y_gp_test, np.nan_to_num(y_pred_next))[0])
 
         K3 = kernel3(x_gp_i)
         D3 = kernel3.diag(x_gp_i)
@@ -408,8 +407,8 @@ if __name__ == "__main__":
 
         y_preds_gp3.append(y_pred_next)
         y_sigmas_gp3.append(sigma_next)
-        pears_gp3.append(pearsonr(y_gp_test, y_pred_next)[0])
-        kts_gp3.append(kendalltau(y_gp_test, y_pred_next)[0])
+        pears_gp3.append(pearsonr(y_gp_test, np.nan_to_num(y_pred_next))[0])
+        kts_gp3.append(kendalltau(y_gp_test, np.nan_to_num(y_pred_next))[0])
 
         # Hierarchical kernel with initial hyperparameters
         K_h = hkernel(x_gp_i)
@@ -458,8 +457,8 @@ if __name__ == "__main__":
 
         y_preds_gp_h.append(y_pred_next)
         y_sigmas_gp_h.append(sigma_next)
-        pears_gp_h.append(pearsonr(y_gp_test, y_pred_next)[0])
-        kts_gp_h.append(kendalltau(y_gp_test, y_pred_next)[0])
+        pears_gp_h.append(pearsonr(y_gp_test, np.nan_to_num(y_pred_next))[0])
+        kts_gp_h.append(kendalltau(y_gp_test, np.nan_to_num(y_pred_next))[0])
 
     plt.plot(range(slice_size, train_size + slice_size, slice_size), kts_gp1, linestyle="dotted")
     plt.xlabel("# of samples")
