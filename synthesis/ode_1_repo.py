@@ -143,7 +143,7 @@ class ODE_1_Repository:
 
         def iter_relu(self):
             yield ODE_1_Repository.ReLu(inplace=False)
-            yield ODE_1_Repository.ReLu(inplace=True)
+            #yield ODE_1_Repository.ReLu(inplace=True)  # inplace not supported here
 
         def iter_tanh(self):
             yield ODE_1_Repository.Tanh()
@@ -1941,8 +1941,8 @@ plt.show()
         # training loop for the synthesized model
 
         model = open_model
-
-        if len(model._parameters) > 0:
+        parameter_list = list(model.parameters())
+        if len(parameter_list) > 0:
 
             # fit model
             optimizer = optim(model)
@@ -2047,7 +2047,7 @@ if __name__ == "__main__":
                           Constructor("input", Literal(1))
                           & Constructor("output", Literal(1))
                           & Constructor("structure", Literal(
-                              (None, None, None, None, None, None, None)
+                              (None, None, None,)
                           )))
                                 & Constructor("Loss", Constructor("type", Literal(repo.MSEloss())))
                                 & Constructor("Optimizer", Constructor("type", Literal(repo.Adam(1e-2))))
