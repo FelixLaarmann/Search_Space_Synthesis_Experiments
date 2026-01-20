@@ -1997,6 +1997,94 @@ plt.show()
             "learner": (lambda i, o, r, ls, e, l, opt, loss, optimizer, model: lambda x, y, x_test, y_test: self.learner(i, model, loss, optimizer, e, x, y, x_test, y_test)),
         }
 
+    def to_structure_2_algebra(self):
+        return {
+            "edges": (lambda io, para1, para2, para3, para4, para5, para6, para7, para8, para9, para10, para11, para12, para13, para14, para15, para16: None),
+
+            "swap": (lambda io, n, m, para1, para2, para3, para4, para5, para6, para7, para8, para9, para10, para11, para12, para13, para14, para15, para16: None),
+
+            "linear_layer": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: None),
+
+            "sigmoid": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: None),
+
+            "relu": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: None),
+
+            "tanh": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: None),
+
+            "sum": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: None),
+
+            "product": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: None),
+
+            "copy": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: None),
+
+            "beside_singleton": (lambda i, o, ls, para, x: (x,)),
+
+            "beside_cons": (lambda i, i1, i2, o, o1, o2, ls, head, tail, x, y: (x,) + y),
+
+            "before_singleton": (lambda i, o, r, ls, ls1, x: (x,)),
+
+            "before_cons": (lambda i, j, o, r, ls, head, tail, x, y: (x,) + y),
+
+            "mse_loss": (lambda l: Literal(None)),
+
+            "l1loss": (lambda l: Literal(None)),
+
+            "adam_optimizer": (lambda o: Literal(None)),
+
+            "learner": (lambda i, o, r, ls, e, l, opt, loss, optimizer, model: Constructor("Learner", Constructor("DAG",
+                          Constructor("input", Literal(i))
+                          & Constructor("output", Literal(o))
+                          & Constructor("structure", Literal(model)))
+                                & Constructor("Loss", Constructor("type", loss))
+                                & Constructor("Optimizer", Constructor("type", optimizer))
+                                & Constructor("epochs", Literal(e))
+                                ))
+        }
+
+    def to_structure_3_algebra(self):
+        return {
+            "edges": (lambda io, para1, para2, para3, para4, para5, para6, para7, para8, para9, para10, para11, para12, para13, para14, para15, para16: (("swap", 0, io), io, io)),
+
+            "swap": (lambda io, n, m, para1, para2, para3, para4, para5, para6, para7, para8, para9, para10, para11, para12, para13, para14, para15, para16: (("swap", n, m), io, io)),
+
+            "linear_layer": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: (None, i, o)),
+
+            "sigmoid": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: (None, i, o)),
+
+            "relu": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: (None, i, o)),
+
+            "tanh": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: (None, i, o)),
+
+            "sum": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: (None, i, o)),
+
+            "product": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: (None, i, o)),
+
+            "copy": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: (None, i, o)),
+
+            "beside_singleton": (lambda i, o, ls, para, x: (x,)),
+
+            "beside_cons": (lambda i, i1, i2, o, o1, o2, ls, head, tail, x, y: (x,) + y),
+
+            "before_singleton": (lambda i, o, r, ls, ls1, x: (x,)),
+
+            "before_cons": (lambda i, j, o, r, ls, head, tail, x, y: (x,) + y),
+
+            "mse_loss": (lambda l: Literal(None)),
+
+            "l1loss": (lambda l: Literal(None)),
+
+            "adam_optimizer": (lambda o: Literal(None)),
+
+            "learner": (lambda i, o, r, ls, e, l, opt, loss, optimizer, model: Constructor("Learner", Constructor("DAG",
+                          Constructor("input", Literal(i))
+                          & Constructor("output", Literal(o))
+                          & Constructor("structure", Literal(model)))
+                                & Constructor("Loss", Constructor("type", loss))
+                                & Constructor("Optimizer", Constructor("type", optimizer))
+                                & Constructor("epochs", Literal(e))
+                                ))
+        }
+
 
 
 if __name__ == "__main__":
@@ -2143,9 +2231,9 @@ if __name__ == "__main__":
     search_space = synthesizer.construct_search_space(target).prune()
     print("finish synthesis, start sampling")
 
-    #terms =  search_space.enumerate_trees(target, 1000)
+    terms =  search_space.enumerate_trees(target, 1000)
 
-    terms = search_space.sample(10, target)
+    #terms = search_space.sample(10, target)
 
     terms_list = list(terms)
 
@@ -2212,3 +2300,7 @@ if __name__ == "__main__":
         print(t.interpret(repo.pretty_term_algebra()))
         learner = t.interpret(repo.pytorch_function_algebra())
         print("Test Loss: " + str(learner(x, y, x_test, y_test)))
+        print("next")
+        print(t.interpret(repo.to_structure_2_algebra()))
+        print("and last")
+        print(t.interpret(repo.to_structure_3_algebra()))

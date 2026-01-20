@@ -133,8 +133,8 @@ def to_grakel_graph_3(t):
 if __name__ == "__main__":
 
     init_sample_size = 10
-    budget = 10 # TODO: measure time for whole BO process and increase or decrease budget accordingly, to run within 24hrs
-    kernel_choice = "hWL"  # alternatively: "WL1", "WL2", "WL3"
+    budget = (10, 10, 10) # TODO: measure time for whole BO process and increase or decrease budget accordingly, to run within 24hrs
+    kernel_choice = "hWL"  # alternatively: "WL"
 
     target = target_from_trapezoid1
 
@@ -164,12 +164,8 @@ if __name__ == "__main__":
     print("X should not have any duplicates!")
     print("If Y has duplicates, either the objective function is not injective or its a rounding error.")
 
-    if kernel_choice == "WL1":
+    if kernel_choice == "WL":
         kernel = WeisfeilerLehmanKernel(n_iter=1, to_grakel_graph=to_grakel_graph_1)
-    elif kernel_choice == "WL2":
-        kernel = WeisfeilerLehmanKernel(n_iter=1, to_grakel_graph=to_grakel_graph_2)
-    elif kernel_choice == "WL3":
-        kernel = WeisfeilerLehmanKernel(n_iter=1, to_grakel_graph=to_grakel_graph_3)
     elif kernel_choice == "hWL":
         kernel = OptimizableHierarchicalWeisfeilerLehmanKernel(to_grakel_graph1=to_grakel_graph_1,
                                                             to_grakel_graph2=to_grakel_graph_2,
@@ -189,8 +185,44 @@ if __name__ == "__main__":
     start = time.time()
 
     # result is a dictionary with keys: "best_tree", "x", "y", "gp_model"
-    result = bo.bayesian_optimisation(n_iters=budget, obj_fun=f_obj, x0=x_gp, y0=y_gp, n_pre_samples=init_sample_size,
+    result = bo.bayesian_optimisation(n_iters=budget[0], obj_fun=f_obj, x0=x_gp, y0=y_gp, n_pre_samples=init_sample_size,
                                       greater_is_better=False, ei_xi=0.01)  # adjusting ei_xi allows to trade off exploration vs exploitation
+    end = time.time()
+    print("Best tree found:")
+    print(result["best_tree"].interpret(repo.pretty_term_algebra()))
+    print("The following data was generated:")
+    best_y = None
+    for x, y in zip(result["x"], result["y"]):
+        print(f"Tree: {x.interpret(repo.pretty_term_algebra())}, Test Loss: {y}")
+        if x == result["best_tree"]:
+            best_y = y
+    print(f'Elapsed Time: {end - start}')
+    next_target = result["best_tree"].interpret(repo.to_structure_2_algebra())
+    print("Next Target: ", next_target)
+    synthesizer = SearchSpaceSynthesizer(repo.specification(), {})
+
+    search_space = synthesizer.construct_search_space(next_target).prune()
+    print("finished synthesis")
+    if kernel_choice == "WL":
+        kernel = WeisfeilerLehmanKernel(n_iter=1, to_grakel_graph=to_grakel_graph_2)
+    elif kernel_choice == "hWL":
+        kernel = result["gp_model"].kernel   # kernel with optimized hyperparameters from previous BO run
+    else:
+        raise ValueError(f"Unknown kernel choice: {kernel_choice}")
+
+    bo = BayesianOptimization(search_space, next_target, kernel=kernel,
+                              kernel_optimizer=kernel.optimize_hyperparameter, n_restarts_optimizer=2,
+                              population_size=100, tournament_size=5,
+                              crossover_rate=0.85, mutation_rate=0.35,
+                              generation_limit=30, elitism=1,
+                              enforce_diversity=False)
+
+    start = time.time()
+
+    # result is a dictionary with keys: "best_tree", "x", "y", "gp_model"
+    result = bo.bayesian_optimisation(n_iters=budget[1], obj_fun=f_obj, x0=[result["best_tree"]], y0=best_y, n_pre_samples=init_sample_size,
+                                      greater_is_better=False,
+                                      ei_xi=0.01)  # adjusting ei_xi allows to trade off exploration vs exploitation
     end = time.time()
     print("Best tree found:")
     print(result["best_tree"].interpret(repo.pretty_term_algebra()))
@@ -198,4 +230,7 @@ if __name__ == "__main__":
     for x, y in zip(result["x"], result["y"]):
         print(f"Tree: {x.interpret(repo.pretty_term_algebra())}, Test Loss: {y}")
     print(f'Elapsed Time: {end - start}')
+    last_target = result["best_tree"].interpret(repo.to_structure_2_algebra())
+
+
     # TODO: compare result["best_tree"] to data generating tree, if available with the kernels

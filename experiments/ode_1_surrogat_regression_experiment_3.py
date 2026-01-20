@@ -259,7 +259,7 @@ if __name__ == "__main__":
     hkernel = OptimizableHierarchicalWeisfeilerLehmanKernel(to_grakel_graph1=to_grakel_graph_1,
                                                             to_grakel_graph2=to_grakel_graph_2,
                                                             to_grakel_graph3=to_grakel_graph_3,
-                                                            weight1=0.4, weight2=0.3, weight3=0.3,
+                                                            weight1=0.1, weight2=0.1, weight3=0.8,
                                                             n_iter1=1, n_iter2=1, n_iter3=1)
 
     gp3 = GaussianProcessRegressor(kernel=kernel3, optimizer=None, normalize_y=False)
