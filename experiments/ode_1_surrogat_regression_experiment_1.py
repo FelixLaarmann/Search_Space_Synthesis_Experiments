@@ -419,8 +419,8 @@ if __name__ == "__main__":
         plt.xticks(np.arange(len(x_gp_i)), range(1, len(x_gp_i) + 1))
         plt.yticks(np.arange(len(x_gp_i)), range(1, len(x_gp_i) + 1))
         plt.title("Term similarity under the unfitted hierarchical kernel")
-        plt.savefig(f'plots/term_sim_k3_{idx}_{EXPERIMENT_NUMBER}.png')
-        plt.savefig(f'plots/term_sim_k3_{idx}_{EXPERIMENT_NUMBER}.pdf')
+        plt.savefig(f'plots/term_sim_hk_{idx}_{EXPERIMENT_NUMBER}.png')
+        plt.savefig(f'plots/term_sim_hk_{idx}_{EXPERIMENT_NUMBER}.pdf')
         plt.close()
 
         # Hierarchical kernel with fitted hyperparameters from the last iteration
@@ -447,8 +447,8 @@ if __name__ == "__main__":
         plt.xticks(np.arange(len(x_gp_i)), range(1, len(x_gp_i) + 1))
         plt.yticks(np.arange(len(x_gp_i)), range(1, len(x_gp_i) + 1))
         plt.title("Term similarity under the fitted hierarchical kernel from the last iteration")
-        plt.savefig(f'plots/term_sim_k3_{idx}_{EXPERIMENT_NUMBER}.png')
-        plt.savefig(f'plots/term_sim_k3_{idx}_{EXPERIMENT_NUMBER}.pdf')
+        plt.savefig(f'plots/term_sim_hkf_{idx}_{EXPERIMENT_NUMBER}.png')
+        plt.savefig(f'plots/term_sim_hkf_{idx}_{EXPERIMENT_NUMBER}.pdf')
         plt.close()
 
         gp_h.fit(x_trained, y_trained)
