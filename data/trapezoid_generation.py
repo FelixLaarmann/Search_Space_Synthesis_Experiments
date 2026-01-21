@@ -3,6 +3,7 @@ import os
 import torch
 import torch.nn as nn
 import pandas as pd
+import matplotlib.pyplot as plt
 
 from synthesis.utils import generate_data
 
@@ -58,3 +59,12 @@ if __name__ == "__main__":
             'generation_model': 'TrapezoidNet'
         }
     }, 'data/TrapezoidNet.pth')
+
+########## Save model 
+torch.save(true_model.state_dict(), 'models/ode_v2.pth')
+
+################### Plot
+plt.figure(figsize=(12, 8))
+plt.plot(x_test.view(-1), y_test.detach().numpy())
+plt.savefig('plots/ode_v2.png')
+plt.savefig('plots/ode_v2.pdf')
