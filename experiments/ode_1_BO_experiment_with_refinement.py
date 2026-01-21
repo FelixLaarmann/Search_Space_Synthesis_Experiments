@@ -260,7 +260,7 @@ if __name__ == "__main__":
     start = time.time()
 
     # result is a dictionary with keys: "best_tree", "x", "y", "gp_model"
-    result = bo.bayesian_optimisation(n_iters=budget[1], obj_fun=f_obj, x0=[result["best_tree"]], y0=best_y,
+    result = bo.bayesian_optimisation(n_iters=budget[2], obj_fun=f_obj, x0=[result["best_tree"]], y0=best_y,
                                       n_pre_samples=init_sample_size,
                                       greater_is_better=False,
                                       ei_xi=0.001)  # adjusting ei_xi allows to trade off exploration vs exploitation. small xi (0.001) -> exploitation, large xi (0.1)-> exploration
