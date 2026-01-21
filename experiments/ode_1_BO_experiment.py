@@ -30,7 +30,7 @@ def parallel_edges(n):
         return (("swap", 0, n), n, n)
 
 # Load pre generated data for the training
-data = torch.load('../data/TrapezoidNet.pth') # TODO: dataset for actual ODE1 target, since trapezoid would be ODE2
+data = torch.load('data/TrapezoidNet.pth') # TODO: dataset for actual ODE1 target, since trapezoid would be ODE2
 x = data['x_train']
 y = data['y_train']
 x_test = data['x_test']
