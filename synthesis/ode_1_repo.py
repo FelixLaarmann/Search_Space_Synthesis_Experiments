@@ -245,7 +245,7 @@ class ODE_1_Repository:
                 yield ODE_1_Repository.Adam(learning_rate=lr)
 
         def __contains__(self, value):
-            return isinstance(value, ODE_1_Repository.Adam) and (value.learning_rate in self.learning_rate_values)
+            return value is None or (isinstance(value, ODE_1_Repository.Adam) and (value.learning_rate in self.learning_rate_values))
 
     class Para(Group):
         name = "Para"
@@ -1511,7 +1511,7 @@ class ODE_1_Repository:
 
             "adam_optimizer": SpecificationBuilder()
             .parameter("optimizer", optimizer)
-            .suffix(Constructor("Optimizer", Constructor("type", Var("optimizer")))),
+            .suffix(Constructor("Optimizer", Constructor("type", Var("optimizer")) & Constructor("type", Literal(None)))),
 
             "learner": SpecificationBuilder()
             .parameter("i", dimension_with_None)

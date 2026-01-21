@@ -23,8 +23,8 @@ EXPERIMENT_NUMBER = "S1"
 
 
 
-repo = ODE_1_Repository(linear_feature_dimensions=[1, 2, 3], constant_values=[0, 1, -1], learning_rate_values=[1e-2],
-                        n_epoch_values=[10000], dimensions=[1,2,3,4])
+repo = ODE_1_Repository(linear_feature_dimensions=[1, 2, 3, 4], constant_values=[0, 1, -1], learning_rate_values=[1e-2],
+                        n_epoch_values=[10000])
 
 #repo = ODE_1_Repository(linear_feature_dimensions=[1, 2], constant_values=[0, 1,],
 #                        learning_rate_values=[1e-2], n_epoch_values=[10000])

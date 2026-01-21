@@ -17,8 +17,8 @@ import networkx as nx
 
 from synthesis.ode_1_repo import ODE_1_Repository
 
-repo = ODE_1_Repository(linear_feature_dimensions=[1, 2, 3], constant_values=[0, 1, -1], learning_rate_values=[1e-2],
-                        n_epoch_values=[10000], dimensions=[1,2,3,4])
+repo = ODE_1_Repository(linear_feature_dimensions=[1, 2, 3, 4], constant_values=[0, 1, -1], learning_rate_values=[1e-2],
+                        n_epoch_values=[10000])
 
 edge = (("swap", 0, 1), 1, 1)
 
@@ -186,7 +186,7 @@ if __name__ == "__main__":
 
     # result is a dictionary with keys: "best_tree", "x", "y", "gp_model"
     result = bo.bayesian_optimisation(n_iters=budget[0], obj_fun=f_obj, x0=x_gp, y0=y_gp, n_pre_samples=init_sample_size,
-                                      greater_is_better=False, ei_xi=0.01)  # adjusting ei_xi allows to trade off exploration vs exploitation
+                                      greater_is_better=False, ei_xi=0.1)  # adjusting ei_xi allows to trade off exploration vs exploitation. small xi (0.01) -> exploitation, large xi (0.1)-> exploration
     end = time.time()
     print("Best tree found:")
     print(result["best_tree"].interpret(repo.pretty_term_algebra()))
@@ -197,12 +197,14 @@ if __name__ == "__main__":
         if x == result["best_tree"]:
             best_y = y
     print(f'Elapsed Time: {end - start}')
+    # TODO: safe results (values from result, best_y, time etc.)
     next_target = result["best_tree"].interpret(repo.to_structure_2_algebra())
     print("Next Target: ", next_target)
     synthesizer = SearchSpaceSynthesizer(repo.specification(), {})
 
     search_space = synthesizer.construct_search_space(next_target).prune()
     print("finished synthesis")
+    # TODO: safe next_target and its search space. Maybe measure synthesis time?
     if kernel_choice == "WL":
         kernel = WeisfeilerLehmanKernel(n_iter=1, to_grakel_graph=to_grakel_graph_2)
     elif kernel_choice == "hWL":
@@ -222,15 +224,56 @@ if __name__ == "__main__":
     # result is a dictionary with keys: "best_tree", "x", "y", "gp_model"
     result = bo.bayesian_optimisation(n_iters=budget[1], obj_fun=f_obj, x0=[result["best_tree"]], y0=best_y, n_pre_samples=init_sample_size,
                                       greater_is_better=False,
-                                      ei_xi=0.01)  # adjusting ei_xi allows to trade off exploration vs exploitation
+                                      ei_xi=0.01)  # adjusting ei_xi allows to trade off exploration vs exploitation. small xi (0.01) -> exploitation, large xi (0.1)-> exploration
     end = time.time()
     print("Best tree found:")
     print(result["best_tree"].interpret(repo.pretty_term_algebra()))
     print("The following data was generated:")
     for x, y in zip(result["x"], result["y"]):
         print(f"Tree: {x.interpret(repo.pretty_term_algebra())}, Test Loss: {y}")
+        if x == result["best_tree"]:
+            best_y = y
     print(f'Elapsed Time: {end - start}')
+    # TODO: safe results (values from result, best_y, time etc.)
     last_target = result["best_tree"].interpret(repo.to_structure_2_algebra())
 
+    print("Last Target: ", last_target)
+    synthesizer = SearchSpaceSynthesizer(repo.specification(), {})
 
-    # TODO: compare result["best_tree"] to data generating tree, if available with the kernels
+    search_space = synthesizer.construct_search_space(last_target).prune()
+    print("finished synthesis")
+    # TODO: safe last_target and its search space. Maybe measure synthesis time?
+    if kernel_choice == "WL":
+        kernel = WeisfeilerLehmanKernel(n_iter=1, to_grakel_graph=to_grakel_graph_3)
+    elif kernel_choice == "hWL":
+        kernel = result["gp_model"].kernel  # kernel with optimized hyperparameters from previous BO run
+    else:
+        raise ValueError(f"Unknown kernel choice: {kernel_choice}")
+
+    bo = BayesianOptimization(search_space, last_target, kernel=kernel,
+                              kernel_optimizer=kernel.optimize_hyperparameter, n_restarts_optimizer=2,
+                              population_size=100, tournament_size=5,
+                              crossover_rate=0.85, mutation_rate=0.35,
+                              generation_limit=30, elitism=1,
+                              enforce_diversity=False)
+
+    start = time.time()
+
+    # result is a dictionary with keys: "best_tree", "x", "y", "gp_model"
+    result = bo.bayesian_optimisation(n_iters=budget[1], obj_fun=f_obj, x0=[result["best_tree"]], y0=best_y,
+                                      n_pre_samples=init_sample_size,
+                                      greater_is_better=False,
+                                      ei_xi=0.001)  # adjusting ei_xi allows to trade off exploration vs exploitation. small xi (0.001) -> exploitation, large xi (0.1)-> exploration
+    end = time.time()
+    print("Best tree found:")
+    print(result["best_tree"].interpret(repo.pretty_term_algebra()))
+    print("The following data was generated:")
+    for x, y in zip(result["x"], result["y"]):
+        print(f"Tree: {x.interpret(repo.pretty_term_algebra())}, Test Loss: {y}")
+        if x == result["best_tree"]:
+            best_y = y
+    print(f'Elapsed Time: {end - start}')
+    # TODO: safe results (values from result, best_y, time etc.)
+
+    # TODO: compare result["best_tree"] to data generating tree, if available
+    # comparison can be done via kernels, to measure how similar the structures are

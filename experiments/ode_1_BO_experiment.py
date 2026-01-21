@@ -17,8 +17,8 @@ import networkx as nx
 
 from synthesis.ode_1_repo import ODE_1_Repository
 
-repo = ODE_1_Repository(linear_feature_dimensions=[1, 2, 3], constant_values=[0, 1, -1], learning_rate_values=[1e-2],
-                        n_epoch_values=[10000], dimensions=[1,2,3,4])
+repo = ODE_1_Repository(linear_feature_dimensions=[1, 2, 3, 4], constant_values=[0, 1, -1], learning_rate_values=[1e-2],
+                        n_epoch_values=[10000])
 
 edge = (("swap", 0, 1), 1, 1)
 
@@ -42,7 +42,7 @@ def f_obj(t):
     return learner(x, y, x_test, y_test)
 
 # TODO: target that synthesizes exactly the one solution, from which the data was generated
-"""
+#"""
 target_solution = None
 
 target = target_solution
@@ -53,7 +53,7 @@ test = search_space.enumerate_trees(target, 10)
 test_list = list(test)
 print(f"Number of trees found: {len(test_list)}") #  should be 1, otherwise target_solution is wrong
 data_generating_tree = test_list[0]
-"""
+#"""
 # TODO: pickle the data generating tree, to know the optimal structure
 
 # TODO: derived target for the actual ODE1 dataset/best structure
