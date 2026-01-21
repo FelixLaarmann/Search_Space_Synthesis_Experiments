@@ -57,13 +57,13 @@ target_solution = Constructor("Learner", Constructor("DAG",
                                                             ),
                                                             (
                                                                 edge, 
-                                                                (repo.Tanh(), 1, 1)  
+                                                                (repo.Tanh(), 1, 1),  
                                                             ),
                                                             (
-                                                                (repo.Product(), 2, 1)
+                                                                (repo.Product(), 2, 1),
                                                             ),
                                                             (
-                                                                (repo.Product(-1), 1, 1)
+                                                                (repo.Product(-1), 1, 1),
                                                             )
                                                          )
                                                      )))
