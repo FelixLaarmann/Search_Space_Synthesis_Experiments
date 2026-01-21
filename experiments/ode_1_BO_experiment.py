@@ -43,13 +43,40 @@ def f_obj(t):
 
 # TODO: target that synthesizes exactly the one solution, from which the data was generated
 #"""
-target_solution = None
+target_solution = Constructor("Learner", Constructor("DAG",
+                                                     Constructor("input", Literal(1))
+                                                     & Constructor("output", Literal(1))
+                                                     & Constructor("structure", Literal(
+                                                         (
+                                                            (
+                                                                (ODE_1_Repository.Copy(2), 1, 2),
+                                                            ),
+                                                            (
+                                                                (repo.Linear(1, 1, True), 1, 1),
+                                                                (repo.Linear(1, 1, True), 1, 1),
+                                                            ),
+                                                            (
+                                                                edge, 
+                                                                (repo.Tanh(), 1, 1)  
+                                                            ),
+                                                            (
+                                                                (repo.Product(), 2, 1)
+                                                            ),
+                                                            (
+                                                                (repo.Product(-1), 1, 1)
+                                                            )
+                                                         )
+                                                     )))
+                                & Constructor("Loss", Constructor("type", Literal(repo.MSEloss())))
+                                & Constructor("Optimizer", Constructor("type", Literal(repo.Adam(1e-2))))
+                                & Constructor("epochs", Literal(10000))
+                    )
 
 target = target_solution
 
 synthesizer = SearchSpaceSynthesizer(repo.specification(), {})
 search_space = synthesizer.construct_search_space(target_solution).prune()
-test = search_space.enumerate_trees(target, 10)
+test = search_space.enumerate_trees(target_solution, 10)
 test_list = list(test)
 print(f"Number of trees found: {len(test_list)}") #  should be 1, otherwise target_solution is wrong
 data_generating_tree = test_list[0]
