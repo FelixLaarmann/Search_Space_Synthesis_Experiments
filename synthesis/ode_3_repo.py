@@ -112,6 +112,10 @@ class ODE_3_Repository:
         trivial = ()
 
     @dataclass(frozen=True)
+    class LTE:
+        threshold: float = 0
+
+    @dataclass(frozen=True)
     class Sin:
         trivial = ()
 
@@ -155,6 +159,10 @@ class ODE_3_Repository:
 
         def iter_tanh(self):
             yield ODE_3_Repository.Tanh()
+        
+        def iter_lte(self):
+            for t in self.constant_values:
+                yield ODE_3_Repository.LTE(threshold=t)
 
         def iter_sin(self):
             yield ODE_3_Repository.Sin()
@@ -182,6 +190,7 @@ class ODE_3_Repository:
             yield from self.iter_tanh()
             yield from self.iter_sin()
             yield from self.iter_cos()
+            yield from self.iter_lte()
             yield from self.iter_sum()
             yield from self.iter_product()
             yield from self.iter_copy()
@@ -201,6 +210,8 @@ class ODE_3_Repository:
                 return True
             elif isinstance(item, ODE_3_Repository.Cos):
                 return True
+            elif isinstance(item, ODE_3_Repository.LTE):
+                return item.threshold in self.constant_values
             elif isinstance(item, ODE_3_Repository.Sum):
                 return item.with_constant in self.constant_values
             elif isinstance(item, ODE_3_Repository.Product):
@@ -1193,6 +1204,34 @@ class ODE_3_Repository:
                                 & Constructor("structure", Literal(None))
                                 ) & Constructor("non_ID")
                     ),
+            "lte": SpecificationBuilder()
+            .parameter("l", labels, lambda v: list(labels.iter_lte()))
+            .parameter("i", dimension)
+            .parameter("o", dimension, lambda v: [v["i"]])
+            .parameter("para1", para_labels, lambda v: [(v["l"], v["i"], v["o"])])
+            .parameter("para2", para_labels, lambda v: [(v["l"], v["i"], None)])
+            .parameter("para3", para_labels, lambda v: [(v["l"], None, v["o"])])
+            .parameter("para4", para_labels, lambda v: [(None, v["i"], v["o"])])
+            .parameter("para5", para_labels, lambda v: [(v["l"], None, None)])
+            .parameter("para6", para_labels, lambda v: [(None, None, v["o"])])
+            .parameter("para7", para_labels, lambda v: [(None, v["i"], None)])
+            .suffix(Constructor("DAG_component",
+                                Constructor("input", Var("i"))
+                                & Constructor("input", Literal(None))
+                                & Constructor("output", Var("o"))
+                                & Constructor("output", Literal(None))
+                                & Constructor("structure", Var("para1"))
+                                & Constructor("structure", Var("para2"))
+                                & Constructor("structure", Var("para3"))
+                                & Constructor("structure", Var("para4"))
+                                & Constructor("structure", Var("para5"))
+                                & Constructor("structure", Var("para6"))
+                                & Constructor("structure", Var("para7"))
+                                # & Constructor("structure", Literal("relu"))
+                                & Constructor("structure", Literal(None))
+                                ) & Constructor("non_ID")
+                    ),
+
 
             "sin": SpecificationBuilder()
             .parameter("l", labels, lambda v: list(labels.iter_sin()))
@@ -1632,6 +1671,8 @@ class ODE_3_Repository:
 
             "cos": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: f"({str(l)}, {i}, {o})"),
 
+            "lte": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: f"({str(l)}, {i}, {o})"),
+
             "sum": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: f"({str(l)}, {i}, {o})"),
 
             "product": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: f"({str(l)}, {i}, {o})"),
@@ -1692,6 +1733,11 @@ Learner(
             "tanh": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: lambda id, inputs: (
                 [(x, str((l, i, o)) + str(id)) for x in inputs], [str((l, i, o)) + str(id) for _ in range(0, o)],
                 {str((l, i, o)) + str(id): id})),
+            
+            "lte": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: lambda id, inputs: (
+                [(x, str((l, i, o)) + str(id)) for x in inputs], [str((l, i, o)) + str(id) for _ in range(0, o)],
+                {str((l, i, o)) + str(id): id})),
+
 
             "sin": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: lambda id, inputs: (
                 [(x, str((l, i, o)) + str(id)) for x in inputs], [str((l, i, o)) + str(id) for _ in range(0, o)],
@@ -1774,6 +1820,12 @@ Learner(
         """, "\n".join([f"""
                 x_{id[0]}_{id[1]}_{k} = self.tanh_{id[0]}_{id[1]}({", ".join(inputs)})
         """ for k in range(o)]), tuple(f"x_{id[0]}_{id[1]}_{k}" for k in range(o)))),
+
+            "lte": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: lambda id, inputs: (f"""
+                        self.lte_{id[0]}_{id[1]} = ?
+                """, "\n".join([f"""
+                        x_{id[0]}_{id[1]}_{k} = self.tanh_{id[0]}_{id[1]}({", ".join(inputs)})
+                """ for k in range(o)]), tuple(f"x_{id[0]}_{id[1]}_{k}" for k in range(o)))),
 
             "sin": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: lambda id, inputs: (f"""
                         self.tanh_{id[0]}_{id[1]} = nn.Tanh()
@@ -1970,6 +2022,21 @@ plt.show()
                 raise ValueError(f"Sigmoid expected to produce {self.o} outputs, but got {len(y)}")
             return y
 
+    class SynthLTE(nn.Module):
+        def __init__(self, output_dim, threshold:float=0.0):
+            super().__init__()
+            self.threshold = threshold
+            self.o = output_dim
+
+        def forward(self, x):
+            #x = torch.cat(x, dim=1)
+            if len(x[1]) != self.o:
+                raise ValueError(f"LTE expected {self.o} inputs, but got {len(x)}")
+            y = (x <= self.threshold).float()
+            if len(y[1]) != self.o:
+                raise ValueError(f"LTE expected to produce {self.o} outputs, but got {len(y)}")
+            return y
+
     class SynthSin(nn.Module):
         def __init__(self, output_dim):
             super().__init__()
@@ -2098,6 +2165,8 @@ plt.show()
             "relu": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: self.SynthReLU(o, l.inplace)),
 
             "tanh": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: self.SynthTanh(o)),
+
+            "lte": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: self.SynthLTE(o, l.threshold)),
 
             "sin": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: self.SynthSin(o)),
 
