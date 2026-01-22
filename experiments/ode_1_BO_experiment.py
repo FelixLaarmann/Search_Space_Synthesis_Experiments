@@ -17,6 +17,26 @@ import networkx as nx
 
 from synthesis.ode_1_repo import ODE_1_Repository
 
+import dill
+from pathlib import Path 
+from datetime import datetime
+
+def create_path_name(exp: str, refine: str): 
+    d_path = f'results/{exp}_{refine}'
+    p = Path(d_path)
+    return p, d_path
+
+
+def pickle_data(data, name: str, refine: str, exp: str):
+    p, d_path = create_path_name(exp=exp, refine=refine)
+    p.mkdir(parents=True, exist_ok=True)
+    with open(f'{d_path}/{name}.pkl', 'wb') as f: 
+        dill.dump(data, f)
+
+
+refine = 'no_ref'
+exp = 'ode_1_bo'
+
 repo = ODE_1_Repository(linear_feature_dimensions=[1, 2, 3, 4], constant_values=[0, 1, -1], learning_rate_values=[1e-2],
                         n_epoch_values=[10000])
 
@@ -81,10 +101,11 @@ test_list = list(test)
 print(f"Number of trees found: {len(test_list)}") #  should be 1, otherwise target_solution is wrong
 data_generating_tree = test_list[0]
 #"""
-# TODO: pickle the data generating tree, to know the optimal structure
+# TODO: pickle the data generating tree, to know the optimal 
+pickle_data(data_generating_tree, name='data_generating_tree', refine=refine, exp=exp)
 
 # TODO: derived target for the actual ODE1 dataset/best structure
-target_from_trapezoid1 = Constructor("Learner", Constructor("DAG",
+target_from_ode1 = Constructor("Learner", Constructor("DAG",
                                                           Constructor("input", Literal(1))
                                                           & Constructor("output", Literal(1))
                                                           & Constructor("structure", Literal(
@@ -94,9 +115,9 @@ target_from_trapezoid1 = Constructor("Learner", Constructor("DAG",
                                                                   None,  # left, gate, right
                                                                   None,  # left, gate, right
                                                                   None,  # left_out, -gate, right
-                                                                  None,  # left_out, 1-gate, right
-                                                                  None,  # left_out, right_out
-                                                                  None
+                                                                  #None,  # left_out, 1-gate, right
+                                                                  #None,  # left_out, right_out
+                                                                  #None
                                                               )
                                                           )))
                                    & Constructor("Loss", Constructor("type", Literal(None)))
@@ -161,9 +182,9 @@ if __name__ == "__main__":
 
     init_sample_size = 10
     budget = 10 # TODO: measure time for whole BO process and increase or decrease budget accordingly, to run within 24hrs
-    kernel_choice = "hWL"  # alternatively: "WL1", "WL2", "WL3"
+    kernel_choice = "WL1"  # alternatively: "WL1", "WL2", "WL3"
 
-    target = target_from_trapezoid1
+    target = target_from_ode1
 
     synthesizer = SearchSpaceSynthesizer(repo.specification(), {})
 
@@ -176,13 +197,30 @@ if __name__ == "__main__":
     test_list = list(test)
     print(f"Number of trees found: {len(test_list)}")
     """
-    # TODO: if the search space looks good, pickle it
+    # TODO: if the search space looks good, pickle 
+    pickle_data(search_space, name='search_spsace', refine=refine, exp=exp)
 
-    terms = search_space.sample(init_sample_size, target)
-    x_gp = list(terms)
-    y_gp = [f_obj(t) for t in x_gp]
+    _, d_path = create_path_name(exp=exp, refine=refine)
+    d_path = f'{d_path}/starting_points.pkl'
+    p = Path(d_path)
+    if p.exists():
+        print(f'Existing data: {d_path}')
+        with open(d_path, 'rb') as f:
+            existing_data = dill.load(f)
+        x_gp = existing_data['x_gp']
+        y_gp = existing_data['y_gp'] 
+    else:
+        print(f'Data does not exist')
+        terms = search_space.sample(init_sample_size, target)
+        x_gp = list(terms)
+        y_gp = [f_obj(t) for t in x_gp]
 
-    # TODO: Safe the "starting points" for BO and load them, instead of resampling every time
+        # TODO: Safe the "starting points" for BO and load them, instead of resampling every time
+        starting_points = {
+            'x_gp': x_gp, 
+            'y_gp': y_gp
+        }
+        pickle_data(starting_points, name='starting_points', refine=refine, exp=exp)
 
     print("duplicates in data:")
     print("X: ", len(x_gp) - len(set(x_gp)))
@@ -225,4 +263,6 @@ if __name__ == "__main__":
     for x, y in zip(result["x"], result["y"]):
         print(f"Tree: {x.interpret(repo.pretty_term_algebra())}, Test Loss: {y}")
     print(f'Elapsed Time: {end - start}')
-    # TODO: compare result["best_tree"] to data generating tree, if available with the kernels
+    # TODO: compare result["best_tree"] to data generating tree, if available with the kernels -- Not here
+    pickle_data(result, name='result', refine=refine, exp=exp)
+    pickle_data(kernel, name='kernel', refine=refine, exp=exp)
