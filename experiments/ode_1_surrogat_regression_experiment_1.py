@@ -263,7 +263,7 @@ if __name__ == "__main__":
         print(f'Out of Memory Error')
     end = time.time() 
 
-    print(f"finished synthesis: {sys.getsizeof(search_space)} MB")
+    print(f"finished synthesis: {sys.getsizeof(search_space)} bytes")
     print(f'Elapsed Time: {end - start}')
     with open(f'results/search_space_{EXPERIMENT_NUMBER}.pkl', 'wb') as f:
         dill.dump(search_space, f)
@@ -317,6 +317,7 @@ if __name__ == "__main__":
     y_gp_test = np.array(y_gp[train_size:])
 
     slice_size = int(train_size // plot_resolution)
+    #print(f'slice size: {slice_size}')
 
     x_gp_train = [np.array(x_gp[i:i + slice_size]) for i in range(0, train_size, slice_size)] #[x_gp_train_1, x_gp_train_2, x_gp_train_3, x_gp_train_4, x_gp_train_5, x_gp_train_6, x_gp_train_7, x_gp_train_8]
     y_gp_train = [np.array(y_gp[i:i + slice_size]) for i in range(0, train_size, slice_size)] #[y_gp_train_1, y_gp_train_2, y_gp_train_3, y_gp_train_4, y_gp_train_5, y_gp_train_6, y_gp_train_7, y_gp_train_8]
