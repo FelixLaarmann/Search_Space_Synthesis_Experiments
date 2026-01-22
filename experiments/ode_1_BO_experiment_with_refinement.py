@@ -16,6 +16,26 @@ from grakel.utils import graph_from_networkx
 import networkx as nx
 
 from synthesis.ode_1_repo import ODE_1_Repository
+import dill
+from pathlib import Path 
+from datetime import datetime
+
+
+def create_path_name(exp: str, refine: str): 
+    d_path = f'results/{exp}_{refine}'
+    p = Path(d_path)
+    return p, d_path
+
+
+def pickle_data(data, name: str, refine: str, exp: str):
+    p, d_path = create_path_name(exp=exp, refine=refine)
+    p.mkdir(parents=True, exist_ok=True)
+    with open(f'{d_path}/{name}.pkl', 'wb') as f: 
+        dill.dump(data, f)
+
+
+refine = 'ref'
+exp = 'ode_1_bo'
 
 repo = ODE_1_Repository(linear_feature_dimensions=[1, 2, 3, 4], constant_values=[0, 1, -1], learning_rate_values=[1e-2],
                         n_epoch_values=[10000])
@@ -30,7 +50,7 @@ def parallel_edges(n):
         return (("swap", 0, n), n, n)
 
 # Load pre generated data for the training
-data = torch.load('../data/TrapezoidNet.pth') # TODO: dataset for actual ODE1 target, since trapezoid would be ODE2
+data = torch.load('data/ode1_dataset.pth') # TODO: dataset for actual ODE1 target, since trapezoid would be ODE2
 x = data['x_train']
 y = data['y_train']
 x_test = data['x_test']
@@ -42,10 +62,37 @@ def f_obj(t):
     return learner(x, y, x_test, y_test)
 
 # TODO: target that synthesizes exactly the one solution, from which the data was generated
-"""
-target_solution = None
+target_solution = Constructor("Learner", Constructor("DAG",
+                                                     Constructor("input", Literal(1))
+                                                     & Constructor("output", Literal(1))
+                                                     & Constructor("structure", Literal(
+                                                         (
+                                                            (
+                                                                (ODE_1_Repository.Copy(2), 1, 2),
+                                                            ),
+                                                            (
+                                                                (repo.Linear(1, 1, True), 1, 1),
+                                                                (repo.Linear(1, 1, True), 1, 1),
+                                                            ),
+                                                            (
+                                                                edge, 
+                                                                (repo.Tanh(), 1, 1),  
+                                                            ),
+                                                            (
+                                                                (repo.Product(), 2, 1),
+                                                            ),
+                                                            (
+                                                                (repo.Product(-1), 1, 1),
+                                                            )
+                                                         )
+                                                     )))
+                                & Constructor("Loss", Constructor("type", Literal(repo.MSEloss())))
+                                & Constructor("Optimizer", Constructor("type", Literal(repo.Adam(1e-2))))
+                                & Constructor("epochs", Literal(10000))
+                    )
 
 target = target_solution
+
 
 synthesizer = SearchSpaceSynthesizer(repo.specification(), {})
 search_space = synthesizer.construct_search_space(target_solution).prune()
@@ -53,8 +100,10 @@ test = search_space.enumerate_trees(target, 10)
 test_list = list(test)
 print(f"Number of trees found: {len(test_list)}") #  should be 1, otherwise target_solution is wrong
 data_generating_tree = test_list[0]
-"""
+
 # TODO: pickle the data generating tree, to know the optimal structure
+pickle_data(data_generating_tree, name='data_generating_tree', refine=refine, exp=exp)
+
 
 # TODO: derived target for the actual ODE1 dataset/best structure
 target_from_trapezoid1 = Constructor("Learner", Constructor("DAG",
@@ -67,9 +116,9 @@ target_from_trapezoid1 = Constructor("Learner", Constructor("DAG",
                                                                   None,  # left, gate, right
                                                                   None,  # left, gate, right
                                                                   None,  # left_out, -gate, right
-                                                                  None,  # left_out, 1-gate, right
-                                                                  None,  # left_out, right_out
-                                                                  None
+                                                                  #None,  # left_out, 1-gate, right
+                                                                  #None,  # left_out, right_out
+                                                                  #None
                                                               )
                                                           )))
                                    & Constructor("Loss", Constructor("type", Literal(None)))
@@ -134,7 +183,7 @@ if __name__ == "__main__":
 
     init_sample_size = 10
     budget = (10, 10, 10) # TODO: measure time for whole BO process and increase or decrease budget accordingly, to run within 24hrs
-    kernel_choice = "hWL"  # alternatively: "WL"
+    kernel_choice = "WL1"  # alternatively: "WL"
 
     target = target_from_trapezoid1
 
@@ -150,12 +199,33 @@ if __name__ == "__main__":
     print(f"Number of trees found: {len(test_list)}")
     """
     # TODO: if the search space looks good, pickle it
+    pickle_data(search_space, name='search_space_1', refine=refine, exp=exp)
 
     terms = search_space.sample(init_sample_size, target)
     x_gp = list(terms)
     y_gp = [f_obj(t) for t in x_gp]
 
-    # TODO: Safe the "starting points" for BO and load them, instead of resampling every time
+    _, d_path = create_path_name(exp=exp, refine=refine)
+    d_path = f'{d_path}/starting_points.pkl'
+    p = Path(d_path)
+    if p.exists():
+        print(f'Existing data: {d_path}')
+        with open(d_path, 'rb') as f:
+            existing_data = dill.load(f)
+        x_gp = existing_data['x_gp']
+        y_gp = existing_data['y_gp'] 
+    else:
+        print(f'Data does not exist')
+        terms = search_space.sample(init_sample_size, target)
+        x_gp = list(terms)
+        y_gp = [f_obj(t) for t in x_gp]
+
+        # TODO: Safe the "starting points" for BO and load them, instead of resampling every time
+        starting_points = {
+            'x_gp': x_gp, 
+            'y_gp': y_gp
+        }
+        pickle_data(starting_points, name='starting_points', refine=refine, exp=exp)
 
     print("duplicates in data:")
     print("X: ", len(x_gp) - len(set(x_gp)))
@@ -197,14 +267,24 @@ if __name__ == "__main__":
         if x == result["best_tree"]:
             best_y = y
     print(f'Elapsed Time: {end - start}')
+    result['elapsed_time'] = end - start
     # TODO: safe results (values from result, best_y, time etc.)
+    pickle_data(result, name='result_1', refine=refine, exp=exp)
+    pickle_data(kernel, name='kernel_1', refine=refine, exp=exp)
+
+    ##############################################################
+
     next_target = result["best_tree"].interpret(repo.to_structure_2_algebra())
     print("Next Target: ", next_target)
     synthesizer = SearchSpaceSynthesizer(repo.specification(), {})
 
     search_space = synthesizer.construct_search_space(next_target).prune()
     print("finished synthesis")
+
     # TODO: safe next_target and its search space. Maybe measure synthesis time?
+    pickle_data(search_space, name='search_space_2', refine=refine, exp=exp)
+    pickle_data(next_target, name='next_target_2', refine=refine, exp=exp)
+
     if kernel_choice == "WL":
         kernel = WeisfeilerLehmanKernel(n_iter=1, to_grakel_graph=to_grakel_graph_2)
     elif kernel_choice == "hWL":
@@ -235,6 +315,11 @@ if __name__ == "__main__":
             best_y = y
     print(f'Elapsed Time: {end - start}')
     # TODO: safe results (values from result, best_y, time etc.)
+    result['elapsed_time'] = end - start 
+    pickle_data(result, name='result_2', refine=refine, exp=exp)
+    pickle_data(kernel, name='kernel_2', refine=refine, exp=exp)
+
+    ##############################################################
     last_target = result["best_tree"].interpret(repo.to_structure_2_algebra())
 
     print("Last Target: ", last_target)
@@ -243,6 +328,8 @@ if __name__ == "__main__":
     search_space = synthesizer.construct_search_space(last_target).prune()
     print("finished synthesis")
     # TODO: safe last_target and its search space. Maybe measure synthesis time?
+    pickle_data(search_space, name='search_space_3', refine=refine, exp=exp)
+    pickle_data(last_target, name='next_target_3', refine=refine, exp=exp)
     if kernel_choice == "WL":
         kernel = WeisfeilerLehmanKernel(n_iter=1, to_grakel_graph=to_grakel_graph_3)
     elif kernel_choice == "hWL":
@@ -274,6 +361,9 @@ if __name__ == "__main__":
             best_y = y
     print(f'Elapsed Time: {end - start}')
     # TODO: safe results (values from result, best_y, time etc.)
+    result['elapsed_time'] = end - start
+    pickle_data(result, name='result_3', refine=refine, exp=exp)
+    pickle_data(kernel, name='kernel_3', refine=refine, exp=exp)
 
     # TODO: compare result["best_tree"] to data generating tree, if available
     # comparison can be done via kernels, to measure how similar the structures are

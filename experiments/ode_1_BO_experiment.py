@@ -50,7 +50,7 @@ def parallel_edges(n):
         return (("swap", 0, n), n, n)
 
 # Load pre generated data for the training
-data = torch.load('data/TrapezoidNet.pth') # TODO: dataset for actual ODE1 target, since trapezoid would be ODE2
+data = torch.load('data/ode1_dataset.pth') # TODO: dataset for actual ODE1 target, since trapezoid would be ODE2
 x = data['x_train']
 y = data['y_train']
 x_test = data['x_test']
@@ -198,7 +198,7 @@ if __name__ == "__main__":
     print(f"Number of trees found: {len(test_list)}")
     """
     # TODO: if the search space looks good, pickle 
-    pickle_data(search_space, name='search_spsace', refine=refine, exp=exp)
+    pickle_data(search_space, name='search_space', refine=refine, exp=exp)
 
     _, d_path = create_path_name(exp=exp, refine=refine)
     d_path = f'{d_path}/starting_points.pkl'
@@ -263,6 +263,7 @@ if __name__ == "__main__":
     for x, y in zip(result["x"], result["y"]):
         print(f"Tree: {x.interpret(repo.pretty_term_algebra())}, Test Loss: {y}")
     print(f'Elapsed Time: {end - start}')
+    result['elapsed_time'] = end - start
     # TODO: compare result["best_tree"] to data generating tree, if available with the kernels -- Not here
     pickle_data(result, name='result', refine=refine, exp=exp)
     pickle_data(kernel, name='kernel', refine=refine, exp=exp)
