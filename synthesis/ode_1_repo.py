@@ -270,7 +270,8 @@ class ODE_1_Repository:
             yield None
 
         def __contains__(self, value):
-            return (value is None
+            try:
+                return (value is None
                     #or value in ["linear", "sigmoid", "relu", "sharpness_sigmoid", "lte", "sum", "product"]
                     or (isinstance(value, tuple)
                                      and len(value) == 3
@@ -283,6 +284,8 @@ class ODE_1_Repository:
                                      and value[2] in self.dimensions
                                      # TODO: something like this? -> and value[1] == value[2] if not value[0] in self.labels and value[0][0] == "swap" else True
                                      ))
+            except TypeError: # in case value is not hashable
+                raise ValueError("The requested target type has arguments for the dataclasses, that are not part of the repo parameters!")
 
     class ParaTuples(Group):
         name = "ParaTuples"
@@ -2131,15 +2134,15 @@ plt.show()
                           Constructor("input", Literal(i))
                           & Constructor("output", Literal(o))
                           & Constructor("structure", Literal(model)))
-                                & Constructor("Loss", Constructor("type", loss))
-                                & Constructor("Optimizer", Constructor("type", optimizer))
+                                & Constructor("Loss", Constructor("type", Literal(loss)))
+                                & Constructor("Optimizer", Constructor("type", Literal(optimizer)))
                                 & Constructor("epochs", Literal(e))
                                 )
 
 
 
 if __name__ == "__main__":
-    repo = ODE_1_Repository(linear_feature_dimensions=[1, 2, 5], constant_values=[0, 1,],
+    repo = ODE_1_Repository(linear_feature_dimensions=[1, 2, 5], constant_values=[0, 1, -1],
                             learning_rate_values=[1e-2], n_epoch_values=[10000])
 
     edge = (("swap", 0, 1), 1, 1)
@@ -2276,13 +2279,41 @@ if __name__ == "__main__":
                                          & Constructor("epochs", Literal(10000))
                                          )
 
-    target = target_max_seq_3
+    target_solution = Constructor("Learner", Constructor("DAG",
+                                                         Constructor("input", Literal(1))
+                                                         & Constructor("output", Literal(1))
+                                                         & Constructor("structure", Literal(
+                                                             (
+                                                                 (
+                                                                     (ODE_1_Repository.Copy(2), 1, 2),
+                                                                 ),
+                                                                 (
+                                                                     (repo.Linear(1, 1, True), 1, 1),
+                                                                     (repo.Linear(1, 1, True), 1, 1),
+                                                                 ),
+                                                                 (
+                                                                     edge,
+                                                                     (repo.Tanh(), 1, 1),
+                                                                 ),
+                                                                 (
+                                                                     (repo.Product(), 2, 1),
+                                                                 ),
+                                                                 (
+                                                                     (repo.Product(-1), 1, 1),
+                                                                 )
+                                                             )
+                                                         )))
+                                  & Constructor("Loss", Constructor("type", Literal(repo.MSEloss())))
+                                  & Constructor("Optimizer", Constructor("type", Literal(repo.Adam(1e-2))))
+                                  & Constructor("epochs", Literal(10000)))
+
+    target = target_solution
     synthesizer = SearchSpaceSynthesizer(repo.specification(), {})
 
     search_space = synthesizer.construct_search_space(target).prune()
     print("finish synthesis, start sampling")
 
-    terms =  search_space.enumerate_trees(target, 1000)
+    terms =  search_space.enumerate_trees(target, 10)
 
     #terms = search_space.sample(10, target)
 
@@ -2292,13 +2323,17 @@ if __name__ == "__main__":
 
     #term = terms_list[0]
 
-    print(target)
+    #print(target)
 
     print(f"number of terms: {len(terms_list)}")
-    """
+    #"""
     for t in terms_list:
-        print(t.interpret(repo.pretty_term_algebra()))
-    """
+        pickle = (t.interpret(repo.pickle_algebra()))
+        next_target = repo.from_pickle(pickle)
+        print("pickleing works: " + str(target == next_target))
+        print(target)
+        print(next_target)
+    #"""
 
     class TrapezoidNetPure(nn.Module):
         def __init__(self, random_weights=False, sharpness=None):
