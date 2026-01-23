@@ -21,14 +21,17 @@ import dill
 from pathlib import Path 
 from datetime import datetime
 
-def create_path_name(base: str, exp: str, refine: str): 
+starting = datetime.now().strftime("%Y%m%d_%H%M%S")
+def create_path_name(base: str, exp: str, refine: str, starting: str = ''): 
     d_path = f'{base}/{exp}_{refine}'
+    if starting != '':
+        d_path = f'{d_path}/{starting}'
     p = Path(d_path)
     return p, d_path
 
 
-def pickle_data(data, name: str, refine: str, exp: str, base: str = "results"):
-    p, d_path = create_path_name(exp=exp, refine=refine, base=base)
+def pickle_data(data, name: str, refine: str, exp: str, base: str = "results", starting=''):
+    p, d_path = create_path_name(exp=exp, refine=refine, base=base, starting=starting)
     p.mkdir(parents=True, exist_ok=True)
     with open(f'{d_path}/{name}.pkl', 'wb') as f: 
         dill.dump(data, f)
@@ -102,7 +105,7 @@ print(f"Number of trees found: {len(test_list)}") #  should be 1, otherwise targ
 data_generating_tree = test_list[0]
 #"""
 # TODO: pickle the data generating tree, to know the optimal 
-pickle_data(data_generating_tree, name='data_generating_tree', refine=refine, exp=exp)
+pickle_data(data_generating_tree, name='data_generating_tree', refine=refine, exp=exp, starting=starting)
 
 # TODO: derived target for the actual ODE1 dataset/best structure
 target_from_ode1 = Constructor("Learner", Constructor("DAG",
@@ -198,7 +201,7 @@ if __name__ == "__main__":
     print(f"Number of trees found: {len(test_list)}")
     """
     # TODO: if the search space looks good, pickle 
-    pickle_data(search_space, name='search_space', refine=refine, exp=exp)
+    pickle_data(search_space, name='search_space', refine=refine, exp=exp, starting=starting)
 
     _, d_path = create_path_name(exp=exp, refine='', base='data')
     d_path = f'{d_path}/starting_points.pkl'
@@ -226,7 +229,7 @@ if __name__ == "__main__":
             'x_gp': x_gp, 
             'y_gp': y_gp
         }
-        pickle_data(starting_points, name='starting_points', refine='', exp=exp, base='data')
+        pickle_data(starting_points, name='starting_points', refine='', exp=exp, base='data', starting='')
 
     # TODO Unpickle the starting points like it is done for loading to keep equally between runs
     tmp = []
@@ -284,5 +287,5 @@ if __name__ == "__main__":
     print(f'Elapsed Time: {end - start}')
     result['elapsed_time'] = end - start
     # TODO: compare result["best_tree"] to data generating tree, if available with the kernels -- Not here
-    pickle_data(result, name='result', refine=refine, exp=exp)
-    pickle_data(kernel, name='kernel', refine=refine, exp=exp)
+    pickle_data(result, name='result', refine=refine, exp=exp, starting=starting)
+    pickle_data(kernel, name='kernel', refine=refine, exp=exp, starting=starting)
