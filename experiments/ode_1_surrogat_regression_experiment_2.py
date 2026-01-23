@@ -250,7 +250,7 @@ if __name__ == "__main__":
     search_space = synthesizer.construct_search_space(target).prune()
     print("finished synthesis")
 
-    with open(f'results/search_space_{EXPERIMENT_NUMBER}.pkl', 'wb') as f: 
+    with open(f'{folder}/search_space_{EXPERIMENT_NUMBER}.pkl', 'wb') as f: 
         dill.dump(search_space, f)
 
 
@@ -399,7 +399,7 @@ if __name__ == "__main__":
         kernel matrices will (hopefully) differ.
         """
         ################## Save Kernels
-        np.savez_compressed(f'results/kernels_{idx}_{EXPERIMENT_NUMBER}.npz', k2=K2, d2=D2, k3=K3, d3=D3,
+        np.savez_compressed(f'{folder}/kernels_{idx}_{EXPERIMENT_NUMBER}.npz', k2=K2, d2=D2, k3=K3, d3=D3,
                             kh=K_h, dh=D_h, khfitted=K_h_fitted, dhfitted=D_h_fitted)
                             #hps=hyperparameters_fitted)
         ##################
@@ -487,5 +487,5 @@ if __name__ == "__main__":
         'pears_gp_h': pears_gp_h,
         'kts_gp_h': kts_gp_h
     }
-    with open(f'results/regression_data_{EXPERIMENT_NUMBER}.pkl', 'wb') as f:
+    with open(f'{folder}/regression_data_{EXPERIMENT_NUMBER}.pkl', 'wb') as f:
         dill.dump(regression_data, f)
