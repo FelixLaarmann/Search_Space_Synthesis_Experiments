@@ -21,14 +21,14 @@ import dill
 from pathlib import Path 
 from datetime import datetime
 
-def create_path_name(exp: str, refine: str): 
-    d_path = f'results/{exp}_{refine}'
+def create_path_name(base: str, exp: str, refine: str): 
+    d_path = f'{base}/{exp}_{refine}'
     p = Path(d_path)
     return p, d_path
 
 
-def pickle_data(data, name: str, refine: str, exp: str):
-    p, d_path = create_path_name(exp=exp, refine=refine)
+def pickle_data(data, name: str, refine: str, exp: str, base: str = "results"):
+    p, d_path = create_path_name(exp=exp, refine=refine, base=base)
     p.mkdir(parents=True, exist_ok=True)
     with open(f'{d_path}/{name}.pkl', 'wb') as f: 
         dill.dump(data, f)
@@ -37,7 +37,7 @@ def pickle_data(data, name: str, refine: str, exp: str):
 refine = 'no_ref'
 exp = 'ode_2_bo'
 
-repo = ODE_2_Repository(linear_feature_dimensions=[1, 2, 3, 4], constant_values=[0, 1, -1], learning_rate_values=[1e-2],
+repo = ODE_2_Repository(linear_feature_dimensions=[1, 2, 3, 4], constant_values=[1, -1], learning_rate_values=[1e-2],
                         n_epoch_values=[10000])
 
 edge = (("swap", 0, 1), 1, 1)
@@ -215,10 +215,10 @@ if __name__ == "__main__":
     test_list = list(test)
     print(f"Number of trees found: {len(test_list)}")
     """
-    # TODO: if the search space looks good, pickle 
-    pickle_data(search_space, name='search_space', refine=refine, exp=exp)
+     # TODO: if the search space looks good, pickle 
+    # pickle_data(search_space, name='search_space', refine=refine, exp=exp)
 
-    _, d_path = create_path_name(exp=exp, refine=refine)
+    _, d_path = create_path_name(exp=exp, refine='', base='data')
     d_path = f'{d_path}/starting_points.pkl'
     p = Path(d_path)
     if p.exists():
@@ -233,13 +233,32 @@ if __name__ == "__main__":
         x_gp = list(terms)
         y_gp = [f_obj(t) for t in x_gp]
 
+        tmp = []
+        for term in x_gp:
+            pickle = term.interpret(repo.pickle_algebra())
+            tmp.append(pickle)
+        x_gp = tmp
+
         # TODO: Safe the "starting points" for BO and load them, instead of resampling every time
         starting_points = {
             'x_gp': x_gp, 
             'y_gp': y_gp
         }
-        pickle_data(starting_points, name='starting_points', refine=refine, exp=exp)
+        pickle_data(starting_points, name='starting_points', refine='', exp=exp, base='data')
 
+    # TODO Unpickle the starting points like it is done for loading to keep equally between runs
+    tmp = []
+    print("Unpickling existing data")
+    for idx, x_pickle in enumerate(x_gp):
+        # print(f'Idx: {idx}')
+        target_ = repo.from_pickle(x_pickle)
+        search_space = synthesizer.construct_search_space(target_)
+        terms = list(search_space.enumerate_trees(target_, 10))
+        # print(f'Num Terms: {len(list(terms))}')
+        assert(len(list(terms)) == 1)
+        tmp.append(list(terms)[0])
+    x_gp = tmp
+    
     print("duplicates in data:")
     print("X: ", len(x_gp) - len(set(x_gp)))
     print("Y: ", len(y_gp) - len(set(y_gp)))

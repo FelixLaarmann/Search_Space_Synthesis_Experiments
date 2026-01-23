@@ -2306,7 +2306,7 @@ if __name__ == "__main__":
                                   & Constructor("Loss", Constructor("type", Literal(repo.MSEloss())))
                                   & Constructor("Optimizer", Constructor("type", Literal(repo.Adam(1e-2))))
                                   & Constructor("epochs", Literal(10000)))
-
+    # TODO Pickle Solution
     target = target_solution
     synthesizer = SearchSpaceSynthesizer(repo.specification(), {})
 
