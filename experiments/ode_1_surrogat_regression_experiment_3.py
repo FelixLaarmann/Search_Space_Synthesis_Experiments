@@ -27,7 +27,7 @@ path = Path(folder)
 path.mkdir(parents=True, exist_ok=True)
 
 repo = ODE_1_Repository(linear_feature_dimensions=[1, 2, 3, 4], constant_values=[0, 1, -1], learning_rate_values=[1e-2],
-                        n_epoch_values=[10000])
+                        n_epoch_values=[1000])
 
 edge = (("swap", 0, 1), 1, 1)
 
@@ -77,26 +77,28 @@ target_trapezoid = Constructor("Learner", Constructor("DAG",
                                & Constructor("epochs", Literal(10000))
                                )
 """
-target_from_trapezoid1 = Constructor("Learner", Constructor("DAG",
-                                                            Constructor("input", Literal(1))
-                                                            & Constructor("output", Literal(1))
-                                                            & Constructor("structure", Literal(
-                                                                (
-                                                                    None,
-                                                                    None,  # left, split, right
-                                                                    None,  # left, gate, right
-                                                                    None,  # left_out, -gate, right
-                                                                    None,  # left_out, 1-gate, right
-                                                                    None,  # left_out, right_out
-                                                                    None
-                                                                )
-                                                            )))
-                                     & Constructor("Loss", Constructor("type", Literal(None)))
-                                     & Constructor("Optimizer", Constructor("type", Literal(repo.Adam(1e-2))))
-                                     & Constructor("epochs", Literal(10000))
-                                     )
+target_1 = Constructor("Learner", Constructor("DAG",
+                                                          Constructor("input", Literal(1))
+                                                          & Constructor("output", Literal(1))
+                                                          & Constructor("structure", Literal(
+                                                              (
+                                                                  None,
+                                                                  None,  # left, split, right
+                                                                  None,  # left, gate, right
+                                                                  None,  # left, gate, right
+                                                                  None,  # left_out, -gate, right
+                                                                  #None,  # left_out, 1-gate, right
+                                                                  #None,  # left_out, right_out
+                                                                  #None
+                                                              )
+                                                          )))
+                                   & Constructor("Loss", Constructor("type", Literal(None)))
+                                   & Constructor("Optimizer", Constructor("type", Literal(None)))
+                                   & Constructor("epochs", Literal(1000))
+                                   )
 
-target_from_trapezoid2 = Constructor("Learner", Constructor("DAG",
+
+target_2 = Constructor("Learner", Constructor("DAG",
                                                             Constructor("input", Literal(1))
                                                             & Constructor("output", Literal(1))
                                                             & Constructor("structure", Literal(
@@ -107,30 +109,17 @@ target_from_trapezoid2 = Constructor("Learner", Constructor("DAG",
                                                                     (
                                                                         None,
                                                                         None,
-                                                                        None
-                                                                    ),  # left, split, right
+                                                                    ), 
                                                                     (
                                                                         None,
                                                                         None,
-                                                                        None
-                                                                    ),  # left, gate, right
+                                                                    ), 
                                                                     (
                                                                         None,
-                                                                        None,
-                                                                        None
-                                                                    ),  # left_out, -gate, right
+                                                                    ), 
                                                                     (
                                                                         None,
-                                                                        None,
-                                                                        None
-                                                                    ),  # left_out, 1-gate, right
-                                                                    (
-                                                                        None,
-                                                                        None
-                                                                    ),  # left_out, right_out
-                                                                    (
-                                                                        None,
-                                                                    )
+                                                                    ), 
                                                                 )
                                                             )))
                                      & Constructor("Loss", Constructor("type", Literal(None)))
@@ -138,48 +127,34 @@ target_from_trapezoid2 = Constructor("Learner", Constructor("DAG",
                                      & Constructor("epochs", Literal(10000))
                                      )
 
-target_from_trapezoid3 = Constructor("Learner", Constructor("DAG",
+target_3 = Constructor("Learner", Constructor("DAG",
                                                                 Constructor("input", Literal(1))
                                                                 & Constructor("output", Literal(1))
                                                                 & Constructor("structure", Literal(
                                                                     (
                                                                         (
-                                                                            (None, 1, 3),
-                                                                        ), # x -> (x,x,x)
-                                                                        (
-                                                                            (None, 1, 1),
-                                                                            (None, 1, 1),
-                                                                            (None, 1, 1)
-                                                                        ),  # left, split, right
-                                                                        (
-                                                                            edge,
                                                                             (None, 1, 2),
-                                                                            edge
-                                                                        ),  # left, gate, right
+                                                                        ),
                                                                         (
-                                                                            (None, 2, 1),
                                                                             (None, 1, 1),
-                                                                            edge
-                                                                        ),  # left_out, -gate, right
+                                                                            (None, 1, 1),
+                                                                        ),
                                                                         (
                                                                             edge,
                                                                             (None, 1, 1),
-                                                                            edge
-                                                                        ),  # left_out, 1-gate, right
-                                                                        (
-                                                                            edge,
-                                                                            (None, 2, 1)
-                                                                        ),  # left_out, right_out
+                                                                        ),
                                                                         (
                                                                             (None, 2, 1),
-                                                                        )
+                                                                        ), 
+                                                                        (
+                                                                            (None, 1, 1),
+                                                                        ), 
                                                                     )
                                                                 )))
                                          & Constructor("Loss", Constructor("type", Literal(None)))
                                          & Constructor("Optimizer", Constructor("type", Literal(repo.Adam(1e-2))))
-                                         & Constructor("epochs", Literal(10000))
+                                         & Constructor("epochs", Literal(1000))
                                          )
-
 def to_grakel_graph_1(t):
     edgelist = t.interpret(repo.edgelist_algebra())
 
@@ -243,7 +218,7 @@ if __name__ == "__main__":
 
     train_size = sample_size - test_size
 
-    target = target_from_trapezoid3
+    target = target_3
 
     synthesizer = SearchSpaceSynthesizer(repo.specification(), {})
 
@@ -253,12 +228,12 @@ if __name__ == "__main__":
     with open(f'{folder}/search_space_{EXPERIMENT_NUMBER}.pkl', 'wb') as f: 
         dill.dump(search_space, f)
 
-    """
-    test = search_space.enumerate_trees(target, 10)
+    
+    # test = search_space.enumerate_trees(target, 10)
 
-    test_list = list(test)
-    print(f"Number of trees found: {len(test_list)}")
-    """
+    # test_list = list(test)
+    # print(f"Number of trees found: {len(test_list)}")
+
 
     kernel3 = WeisfeilerLehmanKernel(n_iter=1, to_grakel_graph=to_grakel_graph_3)
     hkernel = OptimizableHierarchicalWeisfeilerLehmanKernel(to_grakel_graph1=to_grakel_graph_1,
