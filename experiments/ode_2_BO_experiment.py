@@ -38,7 +38,7 @@ refine = 'no_ref'
 exp = 'ode_2_bo'
 
 repo = ODE_2_Repository(linear_feature_dimensions=[1, 2, 3, 4], constant_values=[1, 0, -1], learning_rate_values=[1e-2],
-                        n_epoch_values=[10000])
+                        n_epoch_values=[1000])
 
 edge = (("swap", 0, 1), 1, 1)
 

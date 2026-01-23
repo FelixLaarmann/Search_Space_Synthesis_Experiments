@@ -12,6 +12,21 @@ import torch.optim as optim
 
 from synthesis.utils import generate_data
 
+class LTEFunction(torch.autograd.Function):
+    @staticmethod
+    def forward(ctx, x, threshold):
+        ctx.save_for_backward(x.type(torch.DoubleTensor), threshold)
+        return (x <= threshold).float()
+    
+    @staticmethod
+    def backward(ctx, grad_output):
+        x, threshold = ctx.saved_tensors
+        grad_x = torch.zeros_like(x)
+        return grad_x * grad_output, None 
+
+def lte_func(x, threshold=0.0):
+    return LTEFunction.apply(x, threshold)
+
 class ODE_2_Repository:
     """
             The terms have to be in normal form under the following term rewriting system:
@@ -1923,20 +1938,20 @@ plt.show()
             if len(y[1]) != self.o:
                 raise ValueError(f"Sigmoid expected to produce {self.o} outputs, but got {len(y)}")
             return 
-
-    # TODO Backward LTE
-
+    
     class SynthLTE(nn.Module):
         def __init__(self, output_dim, threshold:float=0.0):
             super().__init__()
-            self.threshold = threshold
+            self.threshold = torch.tensor(threshold, dtype=torch.float)
             self.o = output_dim
 
         def forward(self, x):
             #x = torch.cat(x, dim=1)
+            x = x.type(torch.DoubleTensor)
+
             if len(x[1]) != self.o:
                 raise ValueError(f"LTE expected {self.o} inputs, but got {len(x)}")
-            y = (x <= self.threshold).float()
+            y = lte_func(x, self.threshold)
             if len(y[1]) != self.o:
                 raise ValueError(f"LTE expected to produce {self.o} outputs, but got {len(y)}")
             return y
