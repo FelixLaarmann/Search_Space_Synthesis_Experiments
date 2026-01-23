@@ -107,7 +107,7 @@ target_solution = Constructor("Learner", Constructor("DAG",
                                                           )))
                                    & Constructor("Loss", Constructor("type", Literal(repo.MSEloss())))
                                    & Constructor("Optimizer", Constructor("type", Literal(repo.Adam(1e-2))))
-                                   & Constructor("epochs", Literal(10000))
+                                   & Constructor("epochs", Literal(1000))
                     )
 
 target = target_solution
@@ -140,7 +140,7 @@ target_from_ode2 = Constructor("Learner", Constructor("DAG",
                                                           )))
                                    & Constructor("Loss", Constructor("type", Literal(None)))
                                    & Constructor("Optimizer", Constructor("type", Literal(None)))
-                                   & Constructor("epochs", Literal(10000))
+                                   & Constructor("epochs", Literal(1000))
                                    )
 
 def to_grakel_graph_1(t):
