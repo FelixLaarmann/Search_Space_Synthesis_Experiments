@@ -297,7 +297,7 @@ if __name__ == "__main__":
                                     normalize_y=False)
 
     # Load pre generated data for the training
-    data = torch.load('data/TrapezoidNet.pth')
+    data = torch.load('data/ode1_dataset.pth')
     x = data['x_train']
     y = data['y_train']
     x_test = data['x_test']
