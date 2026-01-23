@@ -19,7 +19,12 @@ import dill
 import sys 
 import time 
 
+from pathlib import Path
+from datetime import datetime
+
 EXPERIMENT_NUMBER = "S1"
+starting = datetime.now().strftime("%Y%m%d_%H%M%S")
+folder = f'results/{EXPERIMENT_NUMBER}/{starting}'
 
 
 
@@ -356,8 +361,8 @@ if __name__ == "__main__":
         plt.xticks(np.arange(len(x_gp_i)), range(1, len(x_gp_i) + 1))
         plt.yticks(np.arange(len(x_gp_i)), range(1, len(x_gp_i) + 1))
         plt.title("Term similarity under the kernel1")
-        plt.savefig(f'plots/term_sim_k1_{idx}_{EXPERIMENT_NUMBER}.png')
-        plt.savefig(f'plots/term_sim_k1_{idx}_{EXPERIMENT_NUMBER}.pdf')
+        plt.savefig(f'{folder}/term_sim_k1_{idx}_{EXPERIMENT_NUMBER}.png')
+        plt.savefig(f'{folder}/term_sim_k1_{idx}_{EXPERIMENT_NUMBER}.pdf')
         plt.close()
 
         gp1.fit(x_trained, y_trained)
@@ -377,8 +382,8 @@ if __name__ == "__main__":
         plt.xticks(np.arange(len(x_gp_i)), range(1, len(x_gp_i) + 1))
         plt.yticks(np.arange(len(x_gp_i)), range(1, len(x_gp_i) + 1))
         plt.title("Term similarity under the kernel2")
-        plt.savefig(f'plots/term_sim_k2_{idx}_{EXPERIMENT_NUMBER}.png')
-        plt.savefig(f'plots/term_sim_k2_{idx}_{EXPERIMENT_NUMBER}.pdf')
+        plt.savefig(f'{folder}/term_sim_k2_{idx}_{EXPERIMENT_NUMBER}.png')
+        plt.savefig(f'{folder}/term_sim_k2_{idx}_{EXPERIMENT_NUMBER}.pdf')
         plt.close()
 
 
@@ -398,8 +403,8 @@ if __name__ == "__main__":
         plt.xticks(np.arange(len(x_gp_i)), range(1, len(x_gp_i) + 1))
         plt.yticks(np.arange(len(x_gp_i)), range(1, len(x_gp_i) + 1))
         plt.title("Term similarity under the kernel3")
-        plt.savefig(f'plots/term_sim_k3_{idx}_{EXPERIMENT_NUMBER}.png')
-        plt.savefig(f'plots/term_sim_k3_{idx}_{EXPERIMENT_NUMBER}.pdf')
+        plt.savefig(f'{folder}/term_sim_k3_{idx}_{EXPERIMENT_NUMBER}.png')
+        plt.savefig(f'{folder}/term_sim_k3_{idx}_{EXPERIMENT_NUMBER}.pdf')
         plt.close()
 
         gp3.fit(x_trained, y_trained)
@@ -420,8 +425,8 @@ if __name__ == "__main__":
         plt.xticks(np.arange(len(x_gp_i)), range(1, len(x_gp_i) + 1))
         plt.yticks(np.arange(len(x_gp_i)), range(1, len(x_gp_i) + 1))
         plt.title("Term similarity under the unfitted hierarchical kernel")
-        plt.savefig(f'plots/term_sim_hk_{idx}_{EXPERIMENT_NUMBER}.png')
-        plt.savefig(f'plots/term_sim_hk_{idx}_{EXPERIMENT_NUMBER}.pdf')
+        plt.savefig(f'{folder}/term_sim_hk_{idx}_{EXPERIMENT_NUMBER}.png')
+        plt.savefig(f'{folder}/term_sim_hk_{idx}_{EXPERIMENT_NUMBER}.pdf')
         plt.close()
 
         # Hierarchical kernel with fitted hyperparameters from the last iteration
@@ -448,8 +453,8 @@ if __name__ == "__main__":
         plt.xticks(np.arange(len(x_gp_i)), range(1, len(x_gp_i) + 1))
         plt.yticks(np.arange(len(x_gp_i)), range(1, len(x_gp_i) + 1))
         plt.title("Term similarity under the fitted hierarchical kernel from the last iteration")
-        plt.savefig(f'plots/term_sim_hkf_{idx}_{EXPERIMENT_NUMBER}.png')
-        plt.savefig(f'plots/term_sim_hkf_{idx}_{EXPERIMENT_NUMBER}.pdf')
+        plt.savefig(f'{folder}/term_sim_hkf_{idx}_{EXPERIMENT_NUMBER}.png')
+        plt.savefig(f'{folder}/term_sim_hkf_{idx}_{EXPERIMENT_NUMBER}.pdf')
         plt.close()
 
         gp_h.fit(x_trained, y_trained)
@@ -465,64 +470,64 @@ if __name__ == "__main__":
     plt.xlabel("# of samples")
     plt.ylabel("tau")
     _ = plt.title("Kendall Tau correlation for GP with kernel1")
-    plt.savefig(f'plots/ktau_k1_{EXPERIMENT_NUMBER}.png')
-    plt.savefig(f'plots/ktau_k1_{EXPERIMENT_NUMBER}.pdf')
+    plt.savefig(f'{folder}/ktau_k1_{EXPERIMENT_NUMBER}.png')
+    plt.savefig(f'{folder}/ktau_k1_{EXPERIMENT_NUMBER}.pdf')
     plt.close()
 
     plt.plot(range(slice_size, train_size + slice_size, slice_size), pears_gp1, linestyle="dotted")
     plt.xlabel("# of samples")
     plt.ylabel("p")
     _ = plt.title("Pearson correlation for GP with kernel1")
-    plt.savefig(f'plots/pc_k2_{EXPERIMENT_NUMBER}.png')
-    plt.savefig(f'plots/pc_k2_{EXPERIMENT_NUMBER}.pdf')
+    plt.savefig(f'{folder}/pc_k2_{EXPERIMENT_NUMBER}.png')
+    plt.savefig(f'{folder}/pc_k2_{EXPERIMENT_NUMBER}.pdf')
     plt.close()
 
     plt.plot(range(slice_size, train_size + slice_size, slice_size), kts_gp2, linestyle="dotted")
     plt.xlabel("# of samples")
     plt.ylabel("tau")
     _ = plt.title("Kendall Tau correlation for GP with kernel2")
-    plt.savefig(f'plots/ktau_k2_{EXPERIMENT_NUMBER}.png')
-    plt.savefig(f'plots/ktau_k2_{EXPERIMENT_NUMBER}.pdf')
+    plt.savefig(f'{folder}/ktau_k2_{EXPERIMENT_NUMBER}.png')
+    plt.savefig(f'{folder}/ktau_k2_{EXPERIMENT_NUMBER}.pdf')
     plt.close()
 
     plt.plot(range(slice_size, train_size + slice_size, slice_size), pears_gp2, linestyle="dotted")
     plt.xlabel("# of samples")
     plt.ylabel("p")
     _ = plt.title("Pearson correlation for GP with kernel2")
-    plt.savefig(f'plots/pc_k2_{EXPERIMENT_NUMBER}.png')
-    plt.savefig(f'plots/pc_k2_{EXPERIMENT_NUMBER}.pdf')
+    plt.savefig(f'{folder}/pc_k2_{EXPERIMENT_NUMBER}.png')
+    plt.savefig(f'{folder}/pc_k2_{EXPERIMENT_NUMBER}.pdf')
     plt.close()
 
     plt.plot(range(slice_size, train_size + slice_size, slice_size), kts_gp3, linestyle="dotted")
     plt.xlabel("# of samples")
     plt.ylabel("tau")
     _ = plt.title("Kendall Tau correlation for GP with kernel3")
-    plt.savefig(f'plots/ktau_k3_{EXPERIMENT_NUMBER}.png')
-    plt.savefig(f'plots/ktau_k3_{EXPERIMENT_NUMBER}.pdf')
+    plt.savefig(f'{folder}/ktau_k3_{EXPERIMENT_NUMBER}.png')
+    plt.savefig(f'{folder}/ktau_k3_{EXPERIMENT_NUMBER}.pdf')
     plt.close()
 
     plt.plot(range(slice_size, train_size + slice_size, slice_size), pears_gp3, linestyle="dotted")
     plt.xlabel("# of samples")
     plt.ylabel("p")
     _ = plt.title("Pearson correlation for GP with kernel3")
-    plt.savefig(f'plots/pc_k3_{EXPERIMENT_NUMBER}.png')
-    plt.savefig(f'plots/pc_k3_{EXPERIMENT_NUMBER}.pdf')
+    plt.savefig(f'{folder}/pc_k3_{EXPERIMENT_NUMBER}.png')
+    plt.savefig(f'{folder}/pc_k3_{EXPERIMENT_NUMBER}.pdf')
     plt.close()
 
     plt.plot(range(slice_size, train_size + slice_size, slice_size), kts_gp_h, linestyle="dotted")
     plt.xlabel("# of samples")
     plt.ylabel("tau")
     _ = plt.title("Kendall Tau correlation for GP with hierarchical kernel (with HPO)")
-    plt.savefig(f'plots/ktau_k3_{EXPERIMENT_NUMBER}.png')
-    plt.savefig(f'plots/ktau_k3_{EXPERIMENT_NUMBER}.pdf')
+    plt.savefig(f'{folder}/ktau_k3_{EXPERIMENT_NUMBER}.png')
+    plt.savefig(f'{folder}/ktau_k3_{EXPERIMENT_NUMBER}.pdf')
     plt.close()
 
     plt.plot(range(slice_size, train_size + slice_size, slice_size), pears_gp_h, linestyle="dotted")
     plt.xlabel("# of samples")
     plt.ylabel("p")
     _ = plt.title("Pearson correlation for GP with hierarchical kernel (with HPO)")
-    plt.savefig(f'plots/pc_k3_{EXPERIMENT_NUMBER}.png')
-    plt.savefig(f'plots/pc_k3_{EXPERIMENT_NUMBER}.pdf')
+    plt.savefig(f'{folder}/pc_k3_{EXPERIMENT_NUMBER}.png')
+    plt.savefig(f'{folder}/pc_k3_{EXPERIMENT_NUMBER}.pdf')
     plt.close()
 
     # Save data
