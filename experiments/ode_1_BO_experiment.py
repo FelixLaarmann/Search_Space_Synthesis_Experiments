@@ -265,9 +265,9 @@ if __name__ == "__main__":
 
     bo = BayesianOptimization(search_space, target, kernel=kernel,
                               kernel_optimizer=kernel.optimize_hyperparameter, n_restarts_optimizer=2,
-                              population_size=100, tournament_size=5,
+                              population_size=50, tournament_size=5,
                               crossover_rate=0.85, mutation_rate=0.35,
-                              generation_limit=30, elitism=1,
+                              generation_limit=20, elitism=1,
                               enforce_diversity=False)
 
     start = time.time()
