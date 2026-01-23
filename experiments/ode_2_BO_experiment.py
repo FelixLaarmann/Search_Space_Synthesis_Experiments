@@ -37,7 +37,7 @@ def pickle_data(data, name: str, refine: str, exp: str, base: str = "results"):
 refine = 'no_ref'
 exp = 'ode_2_bo'
 
-repo = ODE_2_Repository(linear_feature_dimensions=[1, 2, 3, 4], constant_values=[1, -1], learning_rate_values=[1e-2],
+repo = ODE_2_Repository(linear_feature_dimensions=[1, 2, 3, 4], constant_values=[1, 0, -1], learning_rate_values=[1e-2],
                         n_epoch_values=[10000])
 
 edge = (("swap", 0, 1), 1, 1)
@@ -231,7 +231,7 @@ if __name__ == "__main__":
         print(f'Data does not exist')
         terms = search_space.sample(init_sample_size, target)
         x_gp = list(terms)
-        y_gp = [f_obj(t) for t in x_gp]
+        y_gp = [f_obj(t) if (print(t.interpret(repo.pretty_term_algebra()))) else f_obj(t) for t in x_gp]
 
         tmp = []
         for term in x_gp:

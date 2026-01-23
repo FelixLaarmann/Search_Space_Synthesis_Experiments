@@ -37,7 +37,7 @@ def pickle_data(data, name: str, refine: str, exp: str, base: str = "results"):
 refine = 'no_ref'
 exp = 'ode_1_bo'
 
-repo = ODE_1_Repository(linear_feature_dimensions=[1, 2, 3, 4], constant_values=[0, 1, -1], learning_rate_values=[1e-2],
+repo = ODE_1_Repository(linear_feature_dimensions=[1, 2, 3, 4], constant_values=[0, 1, -1], learning_rate_values=[1e-2, 5e-3 ,1e-3],
                         n_epoch_values=[10000])
 
 edge = (("swap", 0, 1), 1, 1)

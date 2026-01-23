@@ -1922,7 +1922,9 @@ plt.show()
             y = self.tanh(x)
             if len(y[1]) != self.o:
                 raise ValueError(f"Sigmoid expected to produce {self.o} outputs, but got {len(y)}")
-            return y
+            return 
+
+    # TODO Backward LTE
 
     class SynthLTE(nn.Module):
         def __init__(self, output_dim, threshold:float=0.0):
