@@ -23,6 +23,8 @@ from datetime import datetime
 EXPERIMENT_NUMBER = "S3"
 starting = datetime.now().strftime("%Y%m%d_%H%M%S")
 folder = f'results/{EXPERIMENT_NUMBER}/{starting}'
+path = Path(folder)
+path.mkdir(parents=True, exist_ok=True)
 
 repo = ODE_1_Repository(linear_feature_dimensions=[1, 2, 3, 4], constant_values=[0, 1, -1], learning_rate_values=[1e-2],
                         n_epoch_values=[10000])

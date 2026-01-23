@@ -25,6 +25,8 @@ from datetime import datetime
 EXPERIMENT_NUMBER = "S1"
 starting = datetime.now().strftime("%Y%m%d_%H%M%S")
 folder = f'results/{EXPERIMENT_NUMBER}/{starting}'
+path = Path(folder)
+path.mkdir(parents=True, exist_ok=True)
 
 
 
