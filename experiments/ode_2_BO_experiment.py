@@ -63,12 +63,40 @@ def f_obj(t):
 
 # TODO: target that synthesizes exactly the one solution, from which the data was generated
 #"""
+"""
+                                                                  ((ODE_2_Repository.Copy(1), 1, 1),),
+                                                                  ((ODE_2_Repository.Linear(1, 4), 1, 4),),
+                                                                  (
+                                                                      (ODE_2_Repository.Product(-1), 2, 1),
+                                                                      edge, 
+                                                                      edge,
+                                                                  ),
+                                                                  (
+                                                                      edge, 
+                                                                      (ODE_2_Repository.Tanh(), 2, 2),
+                                                                  ),
+                                                                  (
+                                                                      (ODE_2_Repository.Sum(-1), 3, 1),
+                                                                  ),
+                                                                  (
+                                                                    (ODE_2_Repository.Copy(4), 1, 4),
+                                                                  ),
+                                                                  (
+                                                                      (ODE_2_Repository.Sum(0), 2, 1),
+                                                                      (ODE_2_Repository.Product(-1), 2, 1),
+                                                                  ),
+                                                                  (
+                                                                      (ODE_2_Repository.Linear(2, 1, bias=False), 2, 1),
+                                                                  ),
+
+"""
+
 target_solution = Constructor("Learner", Constructor("DAG",
                                                           Constructor("input", Literal(1))
                                                           & Constructor("output", Literal(1))
                                                           & Constructor("structure", Literal(
                                                               (
-                                                                  (
+                                                                                                                                    (
                                                                       (ODE_2_Repository.Copy(3), 1, 3),
                                                                   ),
                                                                   (
@@ -210,7 +238,7 @@ if __name__ == "__main__":
     print("finished synthesis")
     # TODO: Andreas, uncomment this to check that the search space isn't empty and if the target is ok, comment it out afterwards
     """
-    test = search_space.enumerate_trees(target, 10)
+    test = search_space.enumerate_trees(target, 100)
 
     test_list = list(test)
     print(f"Number of trees found: {len(test_list)}")
@@ -252,8 +280,8 @@ if __name__ == "__main__":
     for idx, x_pickle in enumerate(x_gp):
         # print(f'Idx: {idx}')
         target_ = repo.from_pickle(x_pickle)
-        search_space = synthesizer.construct_search_space(target_)
-        terms = list(search_space.enumerate_trees(target_, 10))
+        search_space_ = synthesizer.construct_search_space(target_)
+        terms = list(search_space_.enumerate_trees(target_, 10))
         # print(f'Num Terms: {len(list(terms))}')
         assert(len(list(terms)) == 1)
         tmp.append(list(terms)[0])
