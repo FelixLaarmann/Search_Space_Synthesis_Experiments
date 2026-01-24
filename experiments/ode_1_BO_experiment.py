@@ -195,12 +195,11 @@ if __name__ == "__main__":
     print("finished synthesis")
     # TODO: Andreas, uncomment this to check that the search space isn't empty and if the target is ok, comment it out afterwards
     """
-
-    test = search_space.enumerate_trees(target, 50)
+    test = search_space.enumerate_trees(target, 10)
 
     test_list = list(test)
     print(f"Number of trees found: {len(test_list)}")
-    """    
+    """
     # TODO: if the search space looks good, pickle 
     pickle_data(search_space, name='search_space', refine=refine, exp=exp, starting=starting)
 
@@ -269,15 +268,15 @@ if __name__ == "__main__":
 
     bo = BayesianOptimization(search_space, target, kernel=kernel,
                               kernel_optimizer=kernel.optimize_hyperparameter, n_restarts_optimizer=2,
-                              population_size=10, tournament_size=2,
+                              population_size=50, tournament_size=5,
                               crossover_rate=0.85, mutation_rate=0.35,
-                              generation_limit=4, elitism=1,
+                              generation_limit=20, elitism=1,
                               enforce_diversity=False)
 
     start = time.time()
 
     # result is a dictionary with keys: "best_tree", "x", "y", "gp_model"
-    result = bo.bayesian_optimisation(n_iters=budget, obj_fun=f_obj, x0=x_gp, y0=y_gp, n_pre_samples=1,
+    result = bo.bayesian_optimisation(n_iters=budget, obj_fun=f_obj, x0=x_gp, y0=y_gp, n_pre_samples=init_sample_size,
                                       greater_is_better=False, ei_xi=0.01)  # adjusting ei_xi allows to trade off exploration vs exploitation. small xi (0.001) -> exploitation, large xi (0.1)-> exploration
     end = time.time()
     print("Best tree found:")
