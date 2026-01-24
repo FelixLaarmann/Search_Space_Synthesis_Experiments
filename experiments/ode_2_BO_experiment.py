@@ -21,22 +21,29 @@ import dill
 from pathlib import Path 
 from datetime import datetime
 
-def create_path_name(base: str, exp: str, refine: str): 
-    d_path = f'{base}/{exp}_{refine}'
+def create_path_name(base: str, exp: str, refine: str, init_samples: int, starting: str = '', kernel_choice: str = ''): 
+    d_path = f'{base}/{exp}_{refine}_{init_samples}'
+    if starting != '':
+        d_path = f'{d_path}/{starting}'
     p = Path(d_path)
     return p, d_path
 
 
-def pickle_data(data, name: str, refine: str, exp: str, base: str = "results"):
-    p, d_path = create_path_name(exp=exp, refine=refine, base=base)
+def pickle_data(data, name: str, refine: str, exp: str, init_samples: int, base: str = "results", starting: str ='', kernel_choice: str = ''):
+    p, d_path = create_path_name(exp=exp, refine=refine, base=base, init_samples=init_samples, starting=starting, kernel_choice=kernel_choice)
     p.mkdir(parents=True, exist_ok=True)
-    with open(f'{d_path}/{name}.pkl', 'wb') as f: 
+    if kernel_choice != '':
+        f_name = f'{name}_{kernel_choice}'
+    else:
+        f_name = f'{name}'
+    with open(f'{d_path}/{f_name}.pkl', 'wb') as f: 
         dill.dump(data, f)
 
 
+
 starting = datetime.now().strftime("%Y%m%d_%H%M%S")
-refine = 'ref'
-exp = 'ode_1_bo'
+refine = 'no_ref'
+exp = 'ode_2_bo'
 kernel_choice = "WL1"  # alternatively: "WL1", "WL2", "WL3", hWL
 init_sample_size: int = 10 # 10, 50
 budget = 30 # TODO: measure time for whole BO process and increase or decrease budget accordingly, to run within 24hrs
@@ -230,11 +237,6 @@ def to_grakel_graph_3(t):
     return gk_graph
 
 if __name__ == "__main__":
-
-    init_sample_size = 10
-    budget = 10 # TODO: measure time for whole BO process and increase or decrease budget accordingly, to run within 24hrs
-    kernel_choice = "WL1"  # alternatively: "WL1", "WL2", "WL3"
-
     target = target_from_ode2
 
     synthesizer = SearchSpaceSynthesizer(repo.specification(), {})
@@ -243,11 +245,25 @@ if __name__ == "__main__":
     print("finished synthesis")
     # TODO: Andreas, uncomment this to check that the search space isn't empty and if the target is ok, comment it out afterwards
     """
-    test = search_space.enumerate_trees(target, 100)
+    test = search_space.enumerate_trees(target, 500)
 
     test_list = list(test)
     print(f"Number of trees found: {len(test_list)}")
     """
+    if kernel_choice == "WL1":
+        kernel = WeisfeilerLehmanKernel(n_iter=1, to_grakel_graph=to_grakel_graph_1)
+    elif kernel_choice == "WL2":
+        kernel = WeisfeilerLehmanKernel(n_iter=1, to_grakel_graph=to_grakel_graph_2)
+    elif kernel_choice == "WL3":
+        kernel = WeisfeilerLehmanKernel(n_iter=1, to_grakel_graph=to_grakel_graph_3)
+    elif kernel_choice == "hWL":
+        kernel = OptimizableHierarchicalWeisfeilerLehmanKernel(to_grakel_graph1=to_grakel_graph_1,
+                                                            to_grakel_graph2=to_grakel_graph_2,
+                                                            to_grakel_graph3=to_grakel_graph_3,
+                                                            weight1=0.4, weight2=0.3, weight3=0.3,
+                                                            n_iter1=1, n_iter2=1, n_iter3=1)
+    else:
+        raise ValueError(f"Unknown kernel choice: {kernel_choice}")
      # TODO: if the search space looks good, pickle 
     pickle_data(search_space, name='search_space', refine=refine, exp=exp, starting=starting, init_samples=init_sample_size, kernel_choice=kernel_choice)
 

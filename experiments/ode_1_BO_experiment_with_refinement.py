@@ -21,26 +21,31 @@ from pathlib import Path
 from datetime import datetime
 
 
-starting = datetime.now().strftime("%Y%m%d_%H%M%S")
-def create_path_name(base: str, exp: str, refine: str, starting: str = ''): 
-    d_path = f'{base}/{exp}_{refine}'
+def create_path_name(base: str, exp: str, refine: str, init_samples: int, starting: str = '', kernel_choice: str = ''): 
+    d_path = f'{base}/{exp}_{refine}_{init_samples}'
     if starting != '':
         d_path = f'{d_path}/{starting}'
     p = Path(d_path)
     return p, d_path
 
 
-def pickle_data(data, name: str, refine: str, exp: str, base: str = "results", starting=''):
-    p, d_path = create_path_name(exp=exp, refine=refine, base=base, starting=starting)
+def pickle_data(data, name: str, refine: str, exp: str, init_samples: int, base: str = "results", starting: str ='', kernel_choice: str = ''):
+    p, d_path = create_path_name(exp=exp, refine=refine, base=base, init_samples=init_samples, starting=starting, kernel_choice=kernel_choice)
     p.mkdir(parents=True, exist_ok=True)
-    with open(f'{d_path}/{name}.pkl', 'wb') as f: 
+    if kernel_choice != '':
+        f_name = f'{name}_{kernel_choice}'
+    else:
+        f_name = f'{name}'
+    with open(f'{d_path}/{f_name}.pkl', 'wb') as f: 
         dill.dump(data, f)
 
 
-
-
+starting = datetime.now().strftime("%Y%m%d_%H%M%S")
 refine = 'ref'
 exp = 'ode_1_bo'
+kernel_choice = "WL"  # alternatively:  hWL
+init_sample_size: int = 50 # 10, 50
+budget = (10, 10, 10) # TODO: measure time for whole BO process and increase or decrease budget accordingly, to run within 24hrs
 
 repo = ODE_1_Repository(linear_feature_dimensions=[1, 2, 3, 4], constant_values=[0, 1, -1], learning_rate_values=[1e-2, 5e-3 ,1e-3],
                         n_epoch_values=[1000])
@@ -107,7 +112,7 @@ print(f"Number of trees found: {len(test_list)}") #  should be 1, otherwise targ
 data_generating_tree = test_list[0]
 
 # pickle the data generating tree, to know the optimal structure
-pickle_data(data_generating_tree, name='data_generating_tree', refine=refine, exp=exp, starting=starting)
+pickle_data(data_generating_tree, name='data_generating_tree', refine=refine, exp=exp, starting=starting, init_samples=init_sample_size, kernel_choice=kernel_choice)
 
 
 # derived target for the actual ODE1 dataset/best structure
@@ -188,11 +193,6 @@ def to_grakel_graph_3(t):
     return gk_graph
 
 if __name__ == "__main__":
-
-    init_sample_size = 10
-    budget = (10, 10, 10)
-    kernel_choice = "WL"  # alternatively: "hWL"
-
     target = target_from_trapezoid1
 
     synthesizer = SearchSpaceSynthesizer(repo.specification(), {})
@@ -226,7 +226,7 @@ if __name__ == "__main__":
     print(f"Number of trees found: {len(test_list)}")
     """
 
-    pickle_data(search_space, name='search_space_1', refine=refine, exp=exp, starting=starting)
+    pickle_data(search_space, name='search_space_1', refine=refine, exp=exp, starting=starting, init_samples=init_sample_size, kernel_choice=kernel_choice)
 
     _, d_path = create_path_name(exp=exp, refine='', base='data')
     d_path = f'{d_path}/starting_points_10.pkl'
@@ -269,7 +269,7 @@ if __name__ == "__main__":
             'x_gp': x_gp, 
             'y_gp': y_gp
         }
-        pickle_data(starting_points, name='starting_points', refine='', exp=exp, base='data', starting='')
+        pickle_data(starting_points, name='starting_points', refine='', exp=exp, base='data', starting='', init_samples=init_sample_size)
 
     # Unpickle the starting points like it is done for loading to keep equally between runs
     tmp = []
@@ -315,8 +315,8 @@ if __name__ == "__main__":
     print(f'Elapsed Time: {end - start}')
     result['elapsed_time'] = end - start
     # safe results (values from result, best_y, time etc.)
-    pickle_data(result, name='result_1', refine=refine, exp=exp)
-    pickle_data(kernel, name='kernel_1', refine=refine, exp=exp)
+    pickle_data(result, name='result_1', refine=refine, exp=exp, starting=starting, init_samples=init_sample_size, kernel_choice=kernel_choice)
+    pickle_data(kernel, name='kernel_1', refine=refine, exp=exp, starting=starting, init_samples=init_sample_size, kernel_choice=kernel_choice)
 
     ##############################################################
 
@@ -328,8 +328,8 @@ if __name__ == "__main__":
     print("finished synthesis")
 
     # safe next_target and its search space. Maybe measure synthesis time?
-    pickle_data(search_space, name='search_space_2', refine=refine, exp=exp, starting=starting)
-    pickle_data(next_target, name='next_target_2', refine=refine, exp=exp, starting=starting)
+    pickle_data(search_space, name='search_space_2', refine=refine, exp=exp, starting=starting, init_samples=init_sample_size, kernel_choice=kernel_choice)
+    pickle_data(next_target, name='next_target_2', refine=refine, exp=exp, starting=starting, init_samples=init_sample_size, kernel_choice=kernel_choice)
 
     if kernel_choice == "WL":
         kernel = WeisfeilerLehmanKernel(n_iter=1, to_grakel_graph=to_grakel_graph_2)
@@ -362,8 +362,8 @@ if __name__ == "__main__":
     print(f'Elapsed Time: {end - start}')
     # safe results (values from result, best_y, time etc.)
     result['elapsed_time'] = end - start 
-    pickle_data(result, name='result_2', refine=refine, exp=exp, starting=starting)
-    pickle_data(kernel, name='kernel_2', refine=refine, exp=exp, starting=starting)
+    pickle_data(result, name='result_2', refine=refine, exp=exp, starting=starting, init_samples=init_sample_size, kernel_choice=kernel_choice)
+    pickle_data(kernel, name='kernel_2', refine=refine, exp=exp, starting=starting, init_samples=init_sample_size, kernel_choice=kernel_choice)
 
     ##############################################################
     last_target = result["best_tree"].interpret(repo.to_structure_2_algebra())
@@ -374,8 +374,8 @@ if __name__ == "__main__":
     search_space = synthesizer.construct_search_space(last_target).prune()
     print("finished synthesis")
     # safe last_target and its search space. Maybe measure synthesis time?
-    pickle_data(search_space, name='search_space_3', refine=refine, exp=exp, starting=starting)
-    pickle_data(last_target, name='next_target_3', refine=refine, exp=exp, starting=starting)
+    pickle_data(search_space, name='search_space_3', refine=refine, exp=exp, starting=starting, init_samples=init_sample_size, kernel_choice=kernel_choice)
+    pickle_data(next_target, name='next_target_3', refine=refine, exp=exp, starting=starting, init_samples=init_sample_size, kernel_choice=kernel_choice)
     if kernel_choice == "WL":
         kernel = WeisfeilerLehmanKernel(n_iter=1, to_grakel_graph=to_grakel_graph_3)
     elif kernel_choice == "hWL":
@@ -408,8 +408,8 @@ if __name__ == "__main__":
     print(f'Elapsed Time: {end - start}')
     # safe results (values from result, best_y, time etc.)
     result['elapsed_time'] = end - start
-    pickle_data(result, name='result_3', refine=refine, exp=exp, starting=starting)
-    pickle_data(kernel, name='kernel_3', refine=refine, exp=exp, starting=starting)
+    pickle_data(result, name='result_3', refine=refine, exp=exp, starting=starting, init_samples=init_sample_size, kernel_choice=kernel_choice)
+    pickle_data(kernel, name='kernel_3', refine=refine, exp=exp, starting=starting, init_samples=init_sample_size, kernel_choice=kernel_choice)
 
     # compare result["best_tree"] to data generating tree, if available
     # comparison can be done via kernels, to measure how similar the structures are
