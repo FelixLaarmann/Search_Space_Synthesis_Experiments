@@ -55,7 +55,7 @@ def parallel_edges(n):
         return (("swap", 0, n), n, n)
 
 # Load pre generated data for the training
-data = torch.load('data/ode1_dataset.pth') # TODO: dataset for actual ODE1 target, since trapezoid would be ODE2
+data = torch.load('data/ode1_dataset.pth')
 x = data['x_train']
 y = data['y_train']
 x_test = data['x_test']
@@ -66,7 +66,7 @@ def f_obj(t):
     learner = t.interpret(repo.pytorch_function_algebra())
     return learner(x, y, x_test, y_test)
 
-# TODO: target that synthesizes exactly the one solution, from which the data was generated
+# target that synthesizes exactly the one solution, from which the data was generated
 target_solution = Constructor("Learner", Constructor("DAG",
                                                      Constructor("input", Literal(1))
                                                      & Constructor("output", Literal(1))
@@ -106,11 +106,11 @@ test_list = list(test)
 print(f"Number of trees found: {len(test_list)}") #  should be 1, otherwise target_solution is wrong
 data_generating_tree = test_list[0]
 
-# TODO: pickle the data generating tree, to know the optimal structure
+# pickle the data generating tree, to know the optimal structure
 pickle_data(data_generating_tree, name='data_generating_tree', refine=refine, exp=exp, starting=starting)
 
 
-# TODO: derived target for the actual ODE1 dataset/best structure
+# derived target for the actual ODE1 dataset/best structure
 target_from_trapezoid1 = Constructor("Learner", Constructor("DAG",
                                                           Constructor("input", Literal(1))
                                                           & Constructor("output", Literal(1))
@@ -190,7 +190,7 @@ def to_grakel_graph_3(t):
 if __name__ == "__main__":
 
     init_sample_size = 10
-    budget = (10, 10, 10) # TODO: measure time for whole BO process and increase or decrease budget accordingly, to run within 24hrs
+    budget = (10, 10, 10)
     kernel_choice = "WL"  # alternatively: "hWL"
 
     target = target_from_trapezoid1
@@ -199,7 +199,7 @@ if __name__ == "__main__":
 
     search_space = synthesizer.construct_search_space(target).prune()
     print("finished synthesis")
-    # TODO: Andreas, uncomment this to check that the search space isn't empty and if the target is ok, comment it out afterwards
+    # Andreas, uncomment this to check that the search space isn't empty and if the target is ok, comment it out afterwards
 
     if kernel_choice == "WL":
         kernel = WeisfeilerLehmanKernel(n_iter=1, to_grakel_graph=to_grakel_graph_1)
@@ -225,7 +225,7 @@ if __name__ == "__main__":
     test_list = list(test)
     print(f"Number of trees found: {len(test_list)}")
     """
-    # TODO: if the search space looks good, pickle 
+
     pickle_data(search_space, name='search_space_1', refine=refine, exp=exp, starting=starting)
 
     _, d_path = create_path_name(exp=exp, refine='', base='data')
@@ -264,14 +264,14 @@ if __name__ == "__main__":
             tmp.append(pickle)
         x_gp = tmp
 
-        # TODO: Safe the "starting points" for BO and load them, instead of resampling every time
+        # Safe the "starting points" for BO and load them, instead of resampling every time
         starting_points = {
             'x_gp': x_gp, 
             'y_gp': y_gp
         }
         pickle_data(starting_points, name='starting_points', refine='', exp=exp, base='data', starting='')
 
-    # TODO Unpickle the starting points like it is done for loading to keep equally between runs
+    # Unpickle the starting points like it is done for loading to keep equally between runs
     tmp = []
     print("Unpickling existing data")
     for idx, x_pickle in enumerate(x_gp):
@@ -314,7 +314,7 @@ if __name__ == "__main__":
             best_y = y
     print(f'Elapsed Time: {end - start}')
     result['elapsed_time'] = end - start
-    # TODO: safe results (values from result, best_y, time etc.)
+    # safe results (values from result, best_y, time etc.)
     pickle_data(result, name='result_1', refine=refine, exp=exp)
     pickle_data(kernel, name='kernel_1', refine=refine, exp=exp)
 
@@ -327,7 +327,7 @@ if __name__ == "__main__":
     search_space = synthesizer.construct_search_space(next_target).prune()
     print("finished synthesis")
 
-    # TODO: safe next_target and its search space. Maybe measure synthesis time?
+    # safe next_target and its search space. Maybe measure synthesis time?
     pickle_data(search_space, name='search_space_2', refine=refine, exp=exp, starting=starting)
     pickle_data(next_target, name='next_target_2', refine=refine, exp=exp, starting=starting)
 
@@ -360,7 +360,7 @@ if __name__ == "__main__":
         if x == result["best_tree"]:
             best_y = y
     print(f'Elapsed Time: {end - start}')
-    # TODO: safe results (values from result, best_y, time etc.)
+    # safe results (values from result, best_y, time etc.)
     result['elapsed_time'] = end - start 
     pickle_data(result, name='result_2', refine=refine, exp=exp, starting=starting)
     pickle_data(kernel, name='kernel_2', refine=refine, exp=exp, starting=starting)
@@ -373,7 +373,7 @@ if __name__ == "__main__":
 
     search_space = synthesizer.construct_search_space(last_target).prune()
     print("finished synthesis")
-    # TODO: safe last_target and its search space. Maybe measure synthesis time?
+    # safe last_target and its search space. Maybe measure synthesis time?
     pickle_data(search_space, name='search_space_3', refine=refine, exp=exp, starting=starting)
     pickle_data(last_target, name='next_target_3', refine=refine, exp=exp, starting=starting)
     if kernel_choice == "WL":
@@ -406,10 +406,10 @@ if __name__ == "__main__":
         if x == result["best_tree"]:
             best_y = y
     print(f'Elapsed Time: {end - start}')
-    # TODO: safe results (values from result, best_y, time etc.)
+    # safe results (values from result, best_y, time etc.)
     result['elapsed_time'] = end - start
     pickle_data(result, name='result_3', refine=refine, exp=exp, starting=starting)
     pickle_data(kernel, name='kernel_3', refine=refine, exp=exp, starting=starting)
 
-    # TODO: compare result["best_tree"] to data generating tree, if available
+    # compare result["best_tree"] to data generating tree, if available
     # comparison can be done via kernels, to measure how similar the structures are

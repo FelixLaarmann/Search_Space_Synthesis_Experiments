@@ -53,7 +53,7 @@ def parallel_edges(n):
         return (("swap", 0, n), n, n)
 
 # Load pre generated data for the training
-data = torch.load('data/ode1_dataset.pth') # TODO: dataset for actual ODE1 target, since trapezoid would be ODE2
+data = torch.load('data/ode1_dataset.pth')
 x = data['x_train']
 y = data['y_train']
 x_test = data['x_test']
@@ -64,7 +64,7 @@ def f_obj(t):
     learner = t.interpret(repo.pytorch_function_algebra())
     return learner(x, y, x_test, y_test)
 
-# TODO: target that synthesizes exactly the one solution, from which the data was generated
+# target that synthesizes exactly the one solution, from which the data was generated
 #"""
 target_solution = Constructor("Learner", Constructor("DAG",
                                                      Constructor("input", Literal(1))
@@ -104,10 +104,10 @@ test_list = list(test)
 print(f"Number of trees found: {len(test_list)}") #  should be 1, otherwise target_solution is wrong
 data_generating_tree = test_list[0]
 #"""
-# TODO: pickle the data generating tree, to know the optimal 
+# pickle the data generating tree, to know the optimal
 pickle_data(data_generating_tree, name='data_generating_tree', refine=refine, exp=exp, starting=starting)
 
-# TODO: derived target for the actual ODE1 dataset/best structure
+# derived target for the actual ODE1 dataset/best structure
 target_from_ode1 = Constructor("Learner", Constructor("DAG",
                                                           Constructor("input", Literal(1))
                                                           & Constructor("output", Literal(1))
@@ -184,7 +184,7 @@ def to_grakel_graph_3(t):
 if __name__ == "__main__":
 
     init_sample_size = 50
-    budget = 30 # TODO: measure time for whole BO process and increase or decrease budget accordingly, to run within 24hrs
+    budget = 30 # number of BO iterations
     kernel_choice = "WL1"  # alternatively: "WL1", "WL2", "WL3"
 
     target = target_from_ode1
@@ -193,7 +193,7 @@ if __name__ == "__main__":
 
     search_space = synthesizer.construct_search_space(target).prune()
     print("finished synthesis")
-    # TODO: Andreas, uncomment this to check that the search space isn't empty and if the target is ok, comment it out afterwards
+    # uncomment this to check that the search space isn't empty and if the target is ok, comment it out afterwards
     """
     test = search_space.enumerate_trees(target, 10)
 
@@ -216,7 +216,6 @@ if __name__ == "__main__":
     else:
         raise ValueError(f"Unknown kernel choice: {kernel_choice}")
 
-    # TODO: if the search space looks good, pickle 
     pickle_data(search_space, name='search_space', refine=refine, exp=exp, starting=starting)
 
     _, d_path = create_path_name(exp=exp, refine='', base='data')
@@ -255,14 +254,14 @@ if __name__ == "__main__":
             tmp.append(pickle)
         x_gp = tmp
 
-        # TODO: Safe the "starting points" for BO and load them, instead of resampling every time
+        # Safe the "starting points" for BO and load them, instead of resampling every time
         starting_points = {
             'x_gp': x_gp, 
             'y_gp': y_gp
         }
         pickle_data(starting_points, name='starting_points', refine='', exp=exp, base='data', starting='')
 
-    # TODO Unpickle the starting points like it is done for loading to keep equally between runs
+    # Unpickle the starting points like it is done for loading to keep equally between runs
     tmp = []
     print("Unpickling existing data")
     for idx, x_pickle in enumerate(x_gp):
@@ -302,6 +301,6 @@ if __name__ == "__main__":
         print(f"Tree: {x.interpret(repo.pretty_term_algebra())}, Test Loss: {y}")
     print(f'Elapsed Time: {end - start}')
     result['elapsed_time'] = end - start
-    # TODO: compare result["best_tree"] to data generating tree, if available with the kernels -- Not here
+    # compare result["best_tree"] to data generating tree, if available with the kernels -- Not here
     pickle_data(result, name='result', refine=refine, exp=exp, starting=starting)
     pickle_data(kernel, name='kernel', refine=refine, exp=exp, starting=starting)
