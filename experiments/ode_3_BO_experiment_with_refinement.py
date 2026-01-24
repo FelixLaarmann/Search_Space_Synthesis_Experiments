@@ -15,7 +15,7 @@ from grakel.utils import graph_from_networkx
 
 import networkx as nx
 
-from synthesis.ode_1_repo import ODE_1_Repository
+from synthesis.ode_3_repo import ODE_3_Repository
 import dill
 from pathlib import Path 
 from datetime import datetime
@@ -42,12 +42,12 @@ def pickle_data(data, name: str, refine: str, exp: str, init_samples: int, base:
 
 starting = datetime.now().strftime("%Y%m%d_%H%M%S")
 refine = 'ref'
-exp = 'ode_1_bo'
+exp = 'ode_3_bo'
 kernel_choice = "WL"  # alternatively:  hWL
 init_sample_size: int = 10 # 10, 50
 budget = (10, 10, 10) # TODO: measure time for whole BO process and increase or decrease budget accordingly, to run within 24hrs
 
-repo = ODE_1_Repository(linear_feature_dimensions=[1, 2, 3, 4], constant_values=[0, 1, -1], learning_rate_values=[1e-2, 5e-3 ,1e-3],
+repo = ODE_3_Repository(linear_feature_dimensions=[1, 2, 3, 4], constant_values=[0, 1, -1], learning_rate_values=[1e-2, 5e-3 ,1e-3],
                         n_epoch_values=[1000])
 
 edge = (("swap", 0, 1), 1, 1)
@@ -60,7 +60,7 @@ def parallel_edges(n):
         return (("swap", 0, n), n, n)
 
 # Load pre generated data for the training
-data = torch.load('data/ode1_dataset.pth')
+data = torch.load('data/ode3_dataset.pth')
 x = data['x_train']
 y = data['y_train']
 x_test = data['x_test']
@@ -73,32 +73,53 @@ def f_obj(t):
 
 # target that synthesizes exactly the one solution, from which the data was generated
 target_solution = Constructor("Learner", Constructor("DAG",
-                                                     Constructor("input", Literal(1))
-                                                     & Constructor("output", Literal(1))
-                                                     & Constructor("structure", Literal(
-                                                         (
-                                                            (
-                                                                (ODE_1_Repository.Copy(2), 1, 2),
-                                                            ),
-                                                            (
-                                                                (repo.Linear(1, 1, True), 1, 1),
-                                                                (repo.Linear(1, 1, True), 1, 1),
-                                                            ),
-                                                            (
-                                                                edge, 
-                                                                (repo.Tanh(), 1, 1),  
-                                                            ),
-                                                            (
-                                                                (repo.Product(), 2, 1),
-                                                            ),
-                                                            (
-                                                                (repo.Product(-1), 1, 1),
-                                                            )
-                                                         )
-                                                     )))
-                                & Constructor("Loss", Constructor("type", Literal(repo.MSEloss())))
-                                & Constructor("Optimizer", Constructor("type", Literal(repo.Adam(1e-2))))
-                                & Constructor("epochs", Literal(1000))
+                                                          Constructor("input", Literal(1))
+                                                          & Constructor("output", Literal(1))
+                                                          & Constructor("structure", Literal(
+                                                              (
+                                                                  (
+                                                                    (repo.Sin(), 1, 1),  
+                                                                  ),
+                                                                (
+                                                                      (ODE_3_Repository.Copy(3), 1, 3),
+                                                                  ),
+                                                                  (
+                                                                      (repo.Linear(1, 1, True), 1, 1),
+                                                                      (repo.Linear(1, 1, True), 1, 1),
+                                                                      (repo.Linear(1, 1, True), 1, 1)
+                                                                  ),  # left, split, right
+                                                                  (
+                                                                      edge,
+                                                                      (repo.LTE(0), 1, 1),
+                                                                      edge
+                                                                  ),  # left, gate, right
+                                                                  (
+                                                                      edge,
+                                                                      (repo.Copy(2), 1, 2),
+                                                                      edge
+                                                                  ),  # left, gate, right
+                                                                  (
+                                                                      (repo.Product(), 2, 1),
+                                                                      (repo.Product(-1), 1, 1),
+                                                                      edge
+                                                                  ),  # left_out, -gate, right
+                                                                  (
+                                                                      edge,
+                                                                      (repo.Sum(1), 1, 1),
+                                                                      edge
+                                                                  ),  # left_out, 1-gate, right
+                                                                  (
+                                                                      edge,
+                                                                      (repo.Product(), 2, 1)
+                                                                  ),  # left_out, right_out
+                                                                  (
+                                                                      (repo.Sum(), 2, 1),
+                                                                  )
+                                                              )
+                                                          )))
+                                   & Constructor("Loss", Constructor("type", Literal(repo.MSEloss())))
+                                   & Constructor("Optimizer", Constructor("type", Literal(repo.Adam(1e-2))))
+                                   & Constructor("epochs", Literal(1000))
                     )
 
 target = target_solution
@@ -116,26 +137,26 @@ pickle_data(data_generating_tree, name='data_generating_tree', refine=refine, ex
 
 
 # derived target for the actual ODE1 dataset/best structure
-target_from_trapezoid1 = Constructor("Learner", Constructor("DAG",
+target_from_ode3 = Constructor("Learner", Constructor("DAG",
                                                           Constructor("input", Literal(1))
                                                           & Constructor("output", Literal(1))
                                                           & Constructor("structure", Literal(
                                                               (
                                                                   None,
+                                                                  None,
                                                                   None,  # left, split, right
                                                                   None,  # left, gate, right
                                                                   None,  # left, gate, right
                                                                   None,  # left_out, -gate, right
-                                                                  #None,  # left_out, 1-gate, right
-                                                                  #None,  # left_out, right_out
-                                                                  #None
+                                                                  None,  # left_out, 1-gate, right
+                                                                  None,  # left_out, right_out
+                                                                  None
                                                               )
                                                           )))
                                    & Constructor("Loss", Constructor("type", Literal(None)))
                                    & Constructor("Optimizer", Constructor("type", Literal(None)))
                                    & Constructor("epochs", Literal(1000))
                                    )
-
 def to_grakel_graph_1(t):
     edgelist = t.interpret(repo.edgelist_algebra())
 
@@ -193,7 +214,7 @@ def to_grakel_graph_3(t):
     return gk_graph
 
 if __name__ == "__main__":
-    target = target_from_trapezoid1
+    target = target_from_ode3
 
     synthesizer = SearchSpaceSynthesizer(repo.specification(), {})
 

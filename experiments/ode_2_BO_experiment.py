@@ -282,6 +282,7 @@ if __name__ == "__main__":
 
         next = search_space.sample_tree(target)
         terms = []
+        counter = 0
         while len(terms) < init_sample_size:
             # print(len(terms))
             is_duplicate = False
@@ -292,6 +293,8 @@ if __name__ == "__main__":
                     break
             if not is_duplicate:
                 terms.append(next)
+                counter += 1 
+                print(f'Found elements: {counter}')
             next = search_space.sample_tree(target)
 
         x_gp = list(terms)

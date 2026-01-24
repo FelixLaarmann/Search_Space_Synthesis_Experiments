@@ -44,7 +44,7 @@ starting = datetime.now().strftime("%Y%m%d_%H%M%S")
 refine = 'ref'
 exp = 'ode_2_bo'
 kernel_choice = "WL"  # alternatively:  hWL
-init_sample_size: int = 50 # 10, 50
+init_sample_size: int = 10 # 10, 50
 budget = (10, 10, 10) # TODO: measure time for whole BO process and increase or decrease budget accordingly, to run within 24hrs
 
 repo = ODE_2_Repository(linear_feature_dimensions=[1, 2, 3, 4], constant_values=[0, 1, -1], learning_rate_values=[1e-2, 5e-3 ,1e-3],
@@ -60,7 +60,7 @@ def parallel_edges(n):
         return (("swap", 0, n), n, n)
 
 # Load pre generated data for the training
-data = torch.load('data/ode1_dataset.pth')
+data = torch.load('data/ode2_dataset.pth')
 x = data['x_train']
 y = data['y_train']
 x_test = data['x_test']
@@ -77,7 +77,7 @@ target_solution = Constructor("Learner", Constructor("DAG",
                                                           & Constructor("output", Literal(1))
                                                           & Constructor("structure", Literal(
                                                               (
-                                                                                                                                    (
+                                                                (
                                                                       (ODE_2_Repository.Copy(3), 1, 3),
                                                                   ),
                                                                   (
