@@ -34,8 +34,13 @@ def pickle_data(data, name: str, refine: str, exp: str, base: str = "results"):
         dill.dump(data, f)
 
 
-refine = 'no_ref'
-exp = 'ode_2_bo'
+starting = datetime.now().strftime("%Y%m%d_%H%M%S")
+refine = 'ref'
+exp = 'ode_1_bo'
+kernel_choice = "WL1"  # alternatively: "WL1", "WL2", "WL3", hWL
+init_sample_size: int = 10 # 10, 50
+budget = 30 # TODO: measure time for whole BO process and increase or decrease budget accordingly, to run within 24hrs
+
 
 repo = ODE_2_Repository(linear_feature_dimensions=[1, 2, 3, 4], constant_values=[1, 0, -1], learning_rate_values=[1e-2, 5e-3, 1e-3],
                         n_epoch_values=[1000])
@@ -148,7 +153,7 @@ print(f"Number of trees found: {len(test_list)}") #  should be 1, otherwise targ
 data_generating_tree = test_list[0]
 #"""
 # TODO: pickle the data generating tree, to know the optimal 
-pickle_data(data_generating_tree, name='data_generating_tree', refine=refine, exp=exp)
+pickle_data(data_generating_tree, name='data_generating_tree', refine=refine, exp=exp, starting=starting, init_samples=init_sample_size, kernel_choice=kernel_choice)
 
 # TODO: derived target for the actual ODE1 dataset/best structure
 target_from_ode2 = Constructor("Learner", Constructor("DAG",
@@ -244,10 +249,10 @@ if __name__ == "__main__":
     print(f"Number of trees found: {len(test_list)}")
     """
      # TODO: if the search space looks good, pickle 
-    # pickle_data(search_space, name='search_space', refine=refine, exp=exp)
+    pickle_data(search_space, name='search_space', refine=refine, exp=exp, starting=starting, init_samples=init_sample_size, kernel_choice=kernel_choice)
 
-    _, d_path = create_path_name(exp=exp, refine='', base='data')
-    d_path = f'{d_path}/starting_points.pkl'
+    _, d_path = create_path_name(exp=exp, refine='', base='data', init_samples=init_sample_size)
+    d_path = f'{d_path}/starting_points_10.pkl'
     p = Path(d_path)
     if p.exists():
         print(f'Existing data: {d_path}')
@@ -257,9 +262,24 @@ if __name__ == "__main__":
         y_gp = existing_data['y_gp'] 
     else:
         print(f'Data does not exist')
-        terms = search_space.sample(init_sample_size, target)
+        #terms = search_space.sample(init_sample_size, target)
+
+        next = search_space.sample_tree(target)
+        terms = []
+        while len(terms) < init_sample_size:
+            # print(len(terms))
+            is_duplicate = False
+            for tree in terms:
+                k = kernel._f(next, tree)  # kernel1 should be enough
+                if k > 0.99:  # almost identical
+                    is_duplicate = True
+                    break
+            if not is_duplicate:
+                terms.append(next)
+            next = search_space.sample_tree(target)
+
         x_gp = list(terms)
-        y_gp = [f_obj(t) if (print(t.interpret(repo.pretty_term_algebra()))) else f_obj(t) for t in x_gp]
+        y_gp = [f_obj(t) for t in x_gp]
 
         tmp = []
         for term in x_gp:
@@ -267,25 +287,26 @@ if __name__ == "__main__":
             tmp.append(pickle)
         x_gp = tmp
 
-        # TODO: Safe the "starting points" for BO and load them, instead of resampling every time
+        # Safe the "starting points" for BO and load them, instead of resampling every time
         starting_points = {
             'x_gp': x_gp, 
             'y_gp': y_gp
         }
-        pickle_data(starting_points, name='starting_points', refine='', exp=exp, base='data')
+        pickle_data(starting_points, name='starting_points', refine='', exp=exp, base='data', starting='', init_samples=init_sample_size)
 
-    # TODO Unpickle the starting points like it is done for loading to keep equally between runs
+    # Unpickle the starting points like it is done for loading to keep equally between runs
     tmp = []
     print("Unpickling existing data")
     for idx, x_pickle in enumerate(x_gp):
         # print(f'Idx: {idx}')
         target_ = repo.from_pickle(x_pickle)
-        search_space_ = synthesizer.construct_search_space(target_)
-        terms = list(search_space_.enumerate_trees(target_, 10))
+        search_space_tmp = synthesizer.construct_search_space(target_)
+        terms = list(search_space_tmp.enumerate_trees(target_, 10))
         # print(f'Num Terms: {len(list(terms))}')
         assert(len(list(terms)) == 1)
         tmp.append(list(terms)[0])
     x_gp = tmp
+
     
     print("duplicates in data:")
     print("X: ", len(x_gp) - len(set(x_gp)))
@@ -330,5 +351,5 @@ if __name__ == "__main__":
     print(f'Elapsed Time: {end - start}')
     result['elapsed_time'] = end - start
     # TODO: compare result["best_tree"] to data generating tree, if available with the kernels -- Not here
-    pickle_data(result, name='result', refine=refine, exp=exp)
-    pickle_data(kernel, name='kernel', refine=refine, exp=exp)
+    pickle_data(result, name='result', refine=refine, exp=exp, starting=starting, init_samples=init_sample_size, kernel_choice=kernel_choice)
+    pickle_data(kernel, name='kernel', refine=refine, exp=exp, starting=starting, init_samples=init_sample_size, kernel_choice=kernel_choice)

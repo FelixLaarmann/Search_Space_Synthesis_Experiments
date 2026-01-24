@@ -21,11 +21,8 @@ import dill
 from pathlib import Path 
 from datetime import datetime
 
-starting = datetime.now().strftime("%Y%m%d_%H%M%S")
 def create_path_name(base: str, exp: str, refine: str, init_samples: int, starting: str = '', kernel_choice: str = ''): 
     d_path = f'{base}/{exp}_{refine}_{init_samples}'
-    if kernel_choice != '':
-        d_path = f'{d_path}_{kernel_choice}'
     if starting != '':
         d_path = f'{d_path}/{starting}'
     p = Path(d_path)
@@ -35,14 +32,18 @@ def create_path_name(base: str, exp: str, refine: str, init_samples: int, starti
 def pickle_data(data, name: str, refine: str, exp: str, init_samples: int, base: str = "results", starting: str ='', kernel_choice: str = ''):
     p, d_path = create_path_name(exp=exp, refine=refine, base=base, init_samples=init_samples, starting=starting, kernel_choice=kernel_choice)
     p.mkdir(parents=True, exist_ok=True)
-    with open(f'{d_path}/{name}.pkl', 'wb') as f: 
+    if kernel_choice != '':
+        f_name = f'{name}_{kernel_choice}'
+    else:
+        f_name = f'{name}'
+    with open(f'{d_path}/{f_name}.pkl', 'wb') as f: 
         dill.dump(data, f)
 
-
+starting = datetime.now().strftime("%Y%m%d_%H%M%S")
 refine = 'no_ref'
 exp = 'ode_1_bo'
-kernel_choice = "WL1"  # alternatively: "WL1", "WL2", "WL3"
-init_sample_size: int = 10 
+kernel_choice = "WL1"  # alternatively: "WL1", "WL2", "WL3", hWL
+init_sample_size: int = 10 # 10, 50
 budget = 30 # TODO: measure time for whole BO process and increase or decrease budget accordingly, to run within 24hrs
 
 repo = ODE_1_Repository(linear_feature_dimensions=[1, 2, 3, 4], constant_values=[0, 1, -1], learning_rate_values=[1e-2, 5e-3 ,1e-3],
@@ -110,7 +111,7 @@ print(f"Number of trees found: {len(test_list)}") #  should be 1, otherwise targ
 data_generating_tree = test_list[0]
 #"""
 # pickle the data generating tree, to know the optimal
-pickle_data(data_generating_tree, name='data_generating_tree', refine=refine, exp=exp, starting=starting, init_samples=init_sample_size)
+pickle_data(data_generating_tree, name='data_generating_tree', refine=refine, exp=exp, starting=starting, init_samples=init_sample_size, kernel_choice=kernel_choice)
 
 # derived target for the actual ODE1 dataset/best structure
 target_from_ode1 = Constructor("Learner", Constructor("DAG",
@@ -219,7 +220,7 @@ if __name__ == "__main__":
     else:
         raise ValueError(f"Unknown kernel choice: {kernel_choice}")
 
-    pickle_data(search_space, name='search_space', refine=refine, exp=exp, starting=starting, init_samples=init_sample_size)
+    pickle_data(search_space, name='search_space', refine=refine, exp=exp, starting=starting, init_samples=init_sample_size, kernel_choice=kernel_choice)
 
     _, d_path = create_path_name(exp=exp, refine='', base='data', init_samples=init_sample_size)
     d_path = f'{d_path}/starting_points_10.pkl'
@@ -305,5 +306,5 @@ if __name__ == "__main__":
     print(f'Elapsed Time: {end - start}')
     result['elapsed_time'] = end - start
     # compare result["best_tree"] to data generating tree, if available with the kernels -- Not here
-    pickle_data(result, name='result', refine=refine, exp=exp, starting=starting, init_samples=init_sample_size)
-    pickle_data(kernel, name='kernel', refine=refine, exp=exp, starting=starting, init_samples=init_sample_size)
+    pickle_data(result, name='result', refine=refine, exp=exp, starting=starting, init_samples=init_sample_size, kernel_choice=kernel_choice)
+    pickle_data(kernel, name='kernel', refine=refine, exp=exp, starting=starting, init_samples=init_sample_size, kernel_choice=kernel_choice)
