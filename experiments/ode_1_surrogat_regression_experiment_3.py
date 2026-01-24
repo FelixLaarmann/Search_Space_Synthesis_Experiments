@@ -161,8 +161,11 @@ def to_grakel_graph_1(t):
     G = nx.MultiDiGraph()
     G.add_edges_from(edgelist)
 
-    relabel = {n: "Node"
+    relabel = {n: "Activation" if ("Sigmoid" in n or "ReLu" in n or "Tanh" in n) else "Node"
                for n in G.nodes()}
+
+    # relabel = {n: "Node"
+    #           for n in G.nodes()}
 
     for n in G.nodes():
         G.nodes[n]['symbol'] = relabel[n]
@@ -258,7 +261,21 @@ if __name__ == "__main__":
         learner = t.interpret(repo.pytorch_function_algebra())
         return learner(x, y, x_test, y_test)
 
-    terms = search_space.sample(sample_size, target)
+    # terms = search_space.sample(sample_size, target)
+    next = search_space.sample_tree(target)
+    terms = []
+    while len(terms) < sample_size:
+        print(len(terms))
+        is_duplicate = False
+        for tree in terms:
+            k = kernel3._f(next, tree)  # kernel1 should be enough
+            if k > 0.99:  # almost identical
+                is_duplicate = True
+                break
+        if not is_duplicate:
+            terms.append(next)
+        next = search_space.sample_tree(target)
+
     x_gp = list(terms)
     y_gp = [f_obj(t) for t in x_gp]
 
@@ -386,16 +403,16 @@ if __name__ == "__main__":
     plt.xlabel("# of samples")
     plt.ylabel("tau")
     _ = plt.title("Kendall Tau correlation for GP with hierarchical kernel (with HPO)")
-    plt.savefig(f'{folder}/ktau_k3_{EXPERIMENT_NUMBER}.png')
-    plt.savefig(f'{folder}/ktau_k3_{EXPERIMENT_NUMBER}.pdf')
+    plt.savefig(f'{folder}/ktau_hk_{EXPERIMENT_NUMBER}.png')
+    plt.savefig(f'{folder}/ktau_hk_{EXPERIMENT_NUMBER}.pdf')
     plt.close()
 
     plt.plot(range(slice_size, train_size + slice_size, slice_size), pears_gp_h, linestyle="dotted")
     plt.xlabel("# of samples")
     plt.ylabel("p")
     _ = plt.title("Pearson correlation for GP with hierarchical kernel (with HPO)")
-    plt.savefig(f'{folder}/pc_k3_{EXPERIMENT_NUMBER}.png')
-    plt.savefig(f'{folder}/pc_k3_{EXPERIMENT_NUMBER}.pdf')
+    plt.savefig(f'{folder}/pc_hk_{EXPERIMENT_NUMBER}.png')
+    plt.savefig(f'{folder}/pc_hk_{EXPERIMENT_NUMBER}.pdf')
     plt.close()
 
     # Save data

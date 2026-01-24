@@ -137,8 +137,11 @@ def to_grakel_graph_1(t):
     G = nx.MultiDiGraph()
     G.add_edges_from(edgelist)
 
-    relabel = {n: "Node"
+    relabel = {n: "Activation" if ("Sigmoid" in n or "ReLu" in n or "Tanh" in n) else "Node"
                for n in G.nodes()}
+
+    #relabel = {n: "Node"
+    #           for n in G.nodes()}
 
     for n in G.nodes():
         G.nodes[n]['symbol'] = relabel[n]
@@ -197,6 +200,25 @@ if __name__ == "__main__":
     search_space = synthesizer.construct_search_space(target).prune()
     print("finished synthesis")
     # TODO: Andreas, uncomment this to check that the search space isn't empty and if the target is ok, comment it out afterwards
+
+    if kernel_choice == "WL":
+        kernel = WeisfeilerLehmanKernel(n_iter=1, to_grakel_graph=to_grakel_graph_1)
+    elif kernel_choice == "hWL":
+        kernel = OptimizableHierarchicalWeisfeilerLehmanKernel(to_grakel_graph1=to_grakel_graph_1,
+                                                            to_grakel_graph2=to_grakel_graph_2,
+                                                            to_grakel_graph3=to_grakel_graph_3,
+                                                            weight1=0.4, weight2=0.3, weight3=0.3,
+                                                            n_iter1=1, n_iter2=1, n_iter3=1)
+    else:
+        raise ValueError(f"Unknown kernel choice: {kernel_choice}")
+
+    bo = BayesianOptimization(search_space, target, kernel=kernel,
+                              kernel_optimizer=kernel.optimize_hyperparameter, n_restarts_optimizer=2,
+                              population_size=100, tournament_size=5,
+                              crossover_rate=0.85, mutation_rate=0.35,
+                              generation_limit=50, elitism=1,
+                              enforce_diversity=False)
+
     """
     test = search_space.enumerate_trees(target, 10)
 
@@ -217,7 +239,22 @@ if __name__ == "__main__":
         y_gp = existing_data['y_gp']
     else:
         print(f'Data does not exist')
-        terms = search_space.sample(init_sample_size, target)
+        # terms = search_space.sample(init_sample_size, target)
+
+        next = search_space.sample_tree(target)
+        terms = []
+        while len(terms) < init_sample_size:
+            print(len(terms))
+            is_duplicate = False
+            for tree in terms:
+                k = kernel._f(next, tree)  # kernel1 should be enough
+                if k > 0.99:  # almost identical
+                    is_duplicate = True
+                    break
+            if not is_duplicate:
+                terms.append(next)
+            next = search_space.sample_tree(target)
+
         x_gp = list(terms)
         y_gp = [f_obj(t) for t in x_gp]
 
@@ -254,23 +291,7 @@ if __name__ == "__main__":
     print("X should not have any duplicates!")
     print("If Y has duplicates, either the objective function is not injective or its a rounding error.")
 
-    if kernel_choice == "WL":
-        kernel = WeisfeilerLehmanKernel(n_iter=1, to_grakel_graph=to_grakel_graph_1)
-    elif kernel_choice == "hWL":
-        kernel = OptimizableHierarchicalWeisfeilerLehmanKernel(to_grakel_graph1=to_grakel_graph_1,
-                                                            to_grakel_graph2=to_grakel_graph_2,
-                                                            to_grakel_graph3=to_grakel_graph_3,
-                                                            weight1=0.4, weight2=0.3, weight3=0.3,
-                                                            n_iter1=1, n_iter2=1, n_iter3=1)
-    else:
-        raise ValueError(f"Unknown kernel choice: {kernel_choice}")
 
-    bo = BayesianOptimization(search_space, target, kernel=kernel,
-                              kernel_optimizer=kernel.optimize_hyperparameter, n_restarts_optimizer=2,
-                              population_size=100, tournament_size=5,
-                              crossover_rate=0.85, mutation_rate=0.35,
-                              generation_limit=50, elitism=1,
-                              enforce_diversity=False)
     """
     TODO Measure the time and alter the parameters accordingly
     Generation Limit >= 10
