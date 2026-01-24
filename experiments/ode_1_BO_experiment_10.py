@@ -42,6 +42,8 @@ def pickle_data(data, name: str, refine: str, exp: str, init_samples: int, base:
 refine = 'no_ref'
 exp = 'ode_1_bo'
 kernel_choice = "WL1"  # alternatively: "WL1", "WL2", "WL3"
+init_sample_size: int = 10 
+budget = 30 # TODO: measure time for whole BO process and increase or decrease budget accordingly, to run within 24hrs
 
 repo = ODE_1_Repository(linear_feature_dimensions=[1, 2, 3, 4], constant_values=[0, 1, -1], learning_rate_values=[1e-2, 5e-3 ,1e-3],
                         n_epoch_values=[1000])
@@ -108,7 +110,7 @@ print(f"Number of trees found: {len(test_list)}") #  should be 1, otherwise targ
 data_generating_tree = test_list[0]
 #"""
 # pickle the data generating tree, to know the optimal
-pickle_data(data_generating_tree, name='data_generating_tree', refine=refine, exp=exp, starting=starting)
+pickle_data(data_generating_tree, name='data_generating_tree', refine=refine, exp=exp, starting=starting, init_samples=init_sample_size)
 
 # derived target for the actual ODE1 dataset/best structure
 target_from_ode1 = Constructor("Learner", Constructor("DAG",
@@ -188,10 +190,6 @@ def to_grakel_graph_3(t):
     return gk_graph
 
 if __name__ == "__main__":
-
-    init_sample_size = 10
-    budget = 30 # TODO: measure time for whole BO process and increase or decrease budget accordingly, to run within 24hrs
-
     target = target_from_ode1
 
     synthesizer = SearchSpaceSynthesizer(repo.specification(), {})
@@ -221,9 +219,9 @@ if __name__ == "__main__":
     else:
         raise ValueError(f"Unknown kernel choice: {kernel_choice}")
 
-    pickle_data(search_space, name='search_space', refine=refine, exp=exp, starting=starting)
+    pickle_data(search_space, name='search_space', refine=refine, exp=exp, starting=starting, init_samples=init_sample_size)
 
-    _, d_path = create_path_name(exp=exp, refine='', base='data')
+    _, d_path = create_path_name(exp=exp, refine='', base='data', init_samples=init_sample_size)
     d_path = f'{d_path}/starting_points_10.pkl'
     p = Path(d_path)
     if p.exists():
@@ -239,7 +237,7 @@ if __name__ == "__main__":
         next = search_space.sample_tree(target)
         terms = []
         while len(terms) < init_sample_size:
-            print(len(terms))
+            # print(len(terms))
             is_duplicate = False
             for tree in terms:
                 k = kernel._f(next, tree)  # kernel1 should be enough
@@ -264,7 +262,7 @@ if __name__ == "__main__":
             'x_gp': x_gp, 
             'y_gp': y_gp
         }
-        pickle_data(starting_points, name='starting_points', refine='', exp=exp, base='data', starting='')
+        pickle_data(starting_points, name='starting_points', refine='', exp=exp, base='data', starting='', init_samples=init_sample_size)
 
     # Unpickle the starting points like it is done for loading to keep equally between runs
     tmp = []
@@ -307,5 +305,5 @@ if __name__ == "__main__":
     print(f'Elapsed Time: {end - start}')
     result['elapsed_time'] = end - start
     # compare result["best_tree"] to data generating tree, if available with the kernels -- Not here
-    pickle_data(result, name='result', refine=refine, exp=exp, starting=starting)
-    pickle_data(kernel, name='kernel', refine=refine, exp=exp, starting=starting)
+    pickle_data(result, name='result', refine=refine, exp=exp, starting=starting, init_samples=init_sample_size)
+    pickle_data(kernel, name='kernel', refine=refine, exp=exp, starting=starting, init_samples=init_sample_size)
