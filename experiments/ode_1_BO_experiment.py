@@ -183,8 +183,8 @@ def to_grakel_graph_3(t):
 
 if __name__ == "__main__":
 
-    init_sample_size = 10
-    budget = 10 # TODO: measure time for whole BO process and increase or decrease budget accordingly, to run within 24hrs
+    init_sample_size = 1
+    budget = 1 # TODO: measure time for whole BO process and increase or decrease budget accordingly, to run within 24hrs
     kernel_choice = "WL1"  # alternatively: "WL1", "WL2", "WL3"
 
     target = target_from_ode1
@@ -268,9 +268,9 @@ if __name__ == "__main__":
 
     bo = BayesianOptimization(search_space, target, kernel=kernel,
                               kernel_optimizer=kernel.optimize_hyperparameter, n_restarts_optimizer=2,
-                              population_size=10, tournament_size=5,
+                              population_size=50, tournament_size=5,
                               crossover_rate=0.85, mutation_rate=0.35,
-                              generation_limit=4, elitism=1,
+                              generation_limit=20, elitism=1,
                               enforce_diversity=False)
 
     start = time.time()
