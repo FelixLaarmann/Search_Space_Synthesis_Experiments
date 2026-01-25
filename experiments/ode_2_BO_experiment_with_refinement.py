@@ -159,7 +159,7 @@ def to_grakel_graph_1(t):
     G = nx.MultiDiGraph()
     G.add_edges_from(edgelist)
 
-    relabel = {n: "Activation" if ("Sigmoid" in n or "ReLu" in n or "Tanh" in n) else "Node"
+    relabel = {n: "Activation" if ("Sigmoid" in n or "ReLu" in n or "Tanh" in n or "LTE" in n) else "Node"
                for n in G.nodes()}
 
     #relabel = {n: "Node"
