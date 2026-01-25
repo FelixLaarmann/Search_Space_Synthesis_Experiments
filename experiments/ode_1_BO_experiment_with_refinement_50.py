@@ -56,15 +56,15 @@ def parallel_edges(n):
 
 # Load pre generated data for the training
 data = torch.load('data/ode1_dataset.pth')
-x = data['x_train']
-y = data['y_train']
-x_test = data['x_test']
-y_test = data['y_test']
+x_data_fucking_side_effects = data['x_train']
+y_data_fucking_side_effects = data['y_train']
+x_test_data_fucking_side_effects = data['x_test']
+y_test_data_fucking_side_effects = data['y_test']
 
 
-def f_obj(t):
-    learner = t.interpret(repo.pytorch_function_algebra())
-    return learner(x, y, x_test, y_test)
+def f_obj(x, y, x_test, y_test):
+    #learner = t.interpret(repo.pytorch_function_algebra())
+    return lambda t: t.interpret(repo.pytorch_function_algebra())(x, y, x_test, y_test)
 
 # target that synthesizes exactly the one solution, from which the data was generated
 target_solution = Constructor("Learner", Constructor("DAG",
@@ -73,7 +73,7 @@ target_solution = Constructor("Learner", Constructor("DAG",
                                                      & Constructor("structure", Literal(
                                                          (
                                                             (
-                                                                (ODE_1_Repository.Copy(2), 1, 2),
+                                                                (repo.Copy(2), 1, 2),
                                                             ),
                                                             (
                                                                 (repo.Linear(1, 1, True), 1, 1),
@@ -257,7 +257,7 @@ if __name__ == "__main__":
             next = search_space.sample_tree(target)
 
         x_gp = list(terms)
-        y_gp = [f_obj(t) for t in x_gp]
+        y_gp = [f_obj(x_data_fucking_side_effects, x_data_fucking_side_effects, x_data_fucking_side_effects, x_data_fucking_side_effects)(t) for t in x_gp]
 
         tmp = []
         for term in x_gp:
@@ -301,7 +301,8 @@ if __name__ == "__main__":
     start = time.time()
 
     # result is a dictionary with keys: "best_tree", "x", "y", "gp_model"
-    result = bo.bayesian_optimisation(n_iters=budget[0], obj_fun=f_obj, x0=x_gp, y0=y_gp, n_pre_samples=init_sample_size,
+    result = bo.bayesian_optimisation(n_iters=budget[0], obj_fun=f_obj(x_data_fucking_side_effects, x_data_fucking_side_effects, x_data_fucking_side_effects, x_data_fucking_side_effects),
+                                      x0=x_gp, y0=y_gp, n_pre_samples=init_sample_size,
                                       greater_is_better=False, ei_xi=0.1)  # adjusting ei_xi allows to trade off exploration vs exploitation. small xi (0.001) -> exploitation, large xi (0.1)-> exploration
     end = time.time()
     print("Best tree found:")
@@ -348,7 +349,8 @@ if __name__ == "__main__":
     start = time.time()
 
     # result is a dictionary with keys: "best_tree", "x", "y", "gp_model"
-    result = bo.bayesian_optimisation(n_iters=budget[1], obj_fun=f_obj, x0=[result["best_tree"]], y0=best_y, n_pre_samples=init_sample_size,
+    result = bo.bayesian_optimisation(n_iters=budget[1], obj_fun=f_obj(x_data_fucking_side_effects, x_data_fucking_side_effects, x_data_fucking_side_effects, x_data_fucking_side_effects),
+                                      x0=[result["best_tree"]], y0=[best_y], n_pre_samples=init_sample_size,
                                       greater_is_better=False,
                                       ei_xi=0.01)  # adjusting ei_xi allows to trade off exploration vs exploitation. small xi (0.001) -> exploitation, large xi (0.1)-> exploration
     end = time.time()
@@ -393,7 +395,8 @@ if __name__ == "__main__":
     start = time.time()
 
     # result is a dictionary with keys: "best_tree", "x", "y", "gp_model"
-    result = bo.bayesian_optimisation(n_iters=budget[2], obj_fun=f_obj, x0=[result["best_tree"]], y0=best_y,
+    result = bo.bayesian_optimisation(n_iters=budget[2], obj_fun=f_obj(x_data_fucking_side_effects, x_data_fucking_side_effects, x_data_fucking_side_effects, x_data_fucking_side_effects),
+                                      x0=[result["best_tree"]], y0=[best_y],
                                       n_pre_samples=init_sample_size,
                                       greater_is_better=False,
                                       ei_xi=0.001)  # adjusting ei_xi allows to trade off exploration vs exploitation. small xi (0.001) -> exploitation, large xi (0.1)-> exploration

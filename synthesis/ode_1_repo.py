@@ -1952,13 +1952,15 @@ plt.show()
             for _ in range(n_epochs):
                 optimizer.zero_grad()
                 pred = model(x).ravel()
-                loss = loss_fn(pred, y)
+                test = pred.reshape_as(y)
+                loss = loss_fn(test, y)
                 loss.backward()
                 optimizer.step()
 
         with torch.inference_mode():
             y_pred = model(x_test).ravel()
-            loss = loss_fn(y_pred, y_test)
+            test = y_pred.reshape_as(y_test)
+            loss = loss_fn(test, y_test)
             return loss.item()
 
     def pytorch_function_algebra(self):
@@ -2285,7 +2287,7 @@ if __name__ == "__main__":
                                                          & Constructor("structure", Literal(
                                                              (
                                                                  (
-                                                                     (ODE_1_Repository.Copy(2), 1, 2),
+                                                                     (repo.Copy(2), 1, 2),
                                                                  ),
                                                                  (
                                                                      (repo.Linear(1, 1, True), 1, 1),
@@ -2306,8 +2308,38 @@ if __name__ == "__main__":
                                   & Constructor("Loss", Constructor("type", Literal(repo.MSEloss())))
                                   & Constructor("Optimizer", Constructor("type", Literal(repo.Adam(1e-2))))
                                   & Constructor("epochs", Literal(10000)))
-    # TODO Pickle Solution
-    target = target_solution
+
+    target_problem = Constructor("Learner", Constructor("DAG",
+                                                         Constructor("input", Literal(1))
+                                                         & Constructor("output", Literal(1))
+                                                         & Constructor("structure", Literal(
+                                                             (
+                                                                 (
+                                                                     (repo.Linear(in_features=1, out_features=2, bias=True), 1, 2),
+                                                                 ),
+                                                                 (
+                                                                     (repo.Linear(in_features=1, out_features=2, bias=False), 1, 2),
+                                                                     edge,
+                                                                 ),
+                                                                 (
+                                                                     edge,
+                                                                     edge,
+                                                                     (repo.Sigmoid(), 1, 1),
+                                                                 ),
+                                                                 (
+                                                                     (ODE_1_Repository.Sum(with_constant=-1), 1, 1),
+                                                                     (ODE_1_Repository.Sum(with_constant=1), 2, 1)
+                                                                 ),
+                                                                 (
+                                                                     (ODE_1_Repository.Linear(in_features=2, out_features=1, bias=False), 2, 1),
+                                                                 )
+                                                             )
+                                                         )))
+                                  & Constructor("Loss", Constructor("type", Literal(repo.MSEloss())))
+                                  & Constructor("Optimizer", Constructor("type", Literal(repo.Adam(1e-2))))
+                                  & Constructor("epochs", Literal(10000)))
+
+    target = target_problem
     synthesizer = SearchSpaceSynthesizer(repo.specification(), {})
 
     search_space = synthesizer.construct_search_space(target).prune()
@@ -2326,14 +2358,14 @@ if __name__ == "__main__":
     #print(target)
 
     print(f"number of terms: {len(terms_list)}")
-    #"""
+    """
     for t in terms_list:
         pickle = (t.interpret(repo.pickle_algebra()))
         next_target = repo.from_pickle(pickle)
         print("pickleing works: " + str(target == next_target))
         print(target)
         print(next_target)
-    #"""
+    """
 
     class TrapezoidNetPure(nn.Module):
         def __init__(self, random_weights=False, sharpness=None):
