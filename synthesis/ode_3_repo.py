@@ -276,7 +276,7 @@ class ODE_3_Repository:
                 yield ODE_3_Repository.Adam(learning_rate=lr)
 
         def __contains__(self, value):
-            return value is None or (isinstance(value, ODE_1_Repository.Adam) and (value.learning_rate in self.learning_rate_values))
+            return value is None or (isinstance(value, ODE_3_Repository.Adam) and (value.learning_rate in self.learning_rate_values))
 
     class Para(Group):
         name = "Para"
@@ -2194,6 +2194,59 @@ plt.show()
 
             "learner": (lambda i, o, r, ls, e, l, opt, loss, optimizer, model: lambda x, y, x_test, y_test: self.learner(i, model, loss, optimizer, e, x, y, x_test, y_test)),
         }
+
+    def pickle_algebra(self):
+        return {
+            "edges": (lambda io, para1, para2, para3, para4, para5, para6, para7, para8, para9, para10, para11, para12,
+                             para13, para14, para15, para16: (("swap", 0, io), io, io)),
+
+            "swap": (
+                lambda io, n, m, para1, para2, para3, para4, para5, para6, para7, para8, para9, para10, para11, para12,
+                       para13, para14, para15, para16: (("swap", n, m), io, io)),
+
+            "linear_layer": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: (l, i, o)),
+
+            "sigmoid": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: (l, i, o)),
+
+            "relu": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: (l, i, o)),
+
+            "tanh": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: (l, i, o)),
+
+            "lte": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: (l, i, o)),
+
+            "sum": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: (l, i, o)),
+
+            "product": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: (l, i, o)),
+
+            "copy": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: (l, i, o)),
+
+            "beside_singleton": (lambda i, o, ls, para, x: (x,)),
+
+            "beside_cons": (lambda i, i1, i2, o, o1, o2, ls, head, tail, x, y: (x,) + y),
+
+            "before_singleton": (lambda i, o, r, ls, ls1, x: (x,)),
+
+            "before_cons": (lambda i, j, o, r, ls, head, tail, x, y: (x,) + y),
+
+            "mse_loss": (lambda l: l),
+
+            "l1loss": (lambda l: l),
+
+            "adam_optimizer": (lambda o: o),
+
+            "learner": (lambda i, o, r, ls, e, l, opt, loss, optimizer, model: ((i,o), model, loss, optimizer, e))
+        }
+
+    def from_pickle(self, pickle):
+        (i,o), model, loss, optimizer, e = pickle
+        return Constructor("Learner", Constructor("DAG",
+                          Constructor("input", Literal(i))
+                          & Constructor("output", Literal(o))
+                          & Constructor("structure", Literal(model)))
+                                & Constructor("Loss", Constructor("type", Literal(loss)))
+                                & Constructor("Optimizer", Constructor("type", Literal(optimizer)))
+                                & Constructor("epochs", Literal(e))
+                                )
 
 
 
