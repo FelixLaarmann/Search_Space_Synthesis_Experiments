@@ -229,7 +229,7 @@ if __name__ == "__main__":
     pickle_data(search_space, name='search_space_1', refine=refine, exp=exp, starting=starting, init_samples=init_sample_size, kernel_choice=kernel_choice)
 
     _, d_path = create_path_name(exp=exp, refine='', base='data')
-    d_path = f'{d_path}/starting_points_10.pkl'
+    d_path = f'{d_path}/starting_points.pkl'
     p = Path(d_path)
     if p.exists():
         print(f'Existing data: {d_path}')
