@@ -15,7 +15,7 @@ from grakel.utils import graph_from_networkx
 
 import networkx as nx
 
-from synthesis.ode_2_repo import ODE_2_Repository
+from synthesis.ode_3_repo import ODE_3_Repository
 
 import dill
 from pathlib import Path 
@@ -43,13 +43,13 @@ def pickle_data(data, name: str, refine: str, exp: str, init_samples: int, base:
 
 starting = datetime.now().strftime("%Y%m%d_%H%M%S")
 refine = 'no_ref'
-exp = 'ode_2_bo'
+exp = 'ode_3_bo'
 kernel_choice = "WL1"  # alternatively: "WL1", "WL2", "WL3", hWL
-init_sample_size: int = 10 # 10, 50
+init_sample_size: int = 5 # 10, 50
 budget = 30 # TODO: measure time for whole BO process and increase or decrease budget accordingly, to run within 24hrs
 
 
-repo = ODE_2_Repository(linear_feature_dimensions=[1, 2, 3, 4], constant_values=[1, 0, -1], learning_rate_values=[1e-2, 5e-3, 1e-3],
+repo = ODE_3_Repository(linear_feature_dimensions=[1, 2, 3, 4], constant_values=[1, 0, -1], learning_rate_values=[1e-2, 5e-3, 1e-3],
                         n_epoch_values=[1000])
 
 edge = (("swap", 0, 1), 1, 1)
@@ -62,7 +62,7 @@ def parallel_edges(n):
         return (("swap", 0, n), n, n)
 
 # Load pre generated data for the training
-data = torch.load('data/ode2_dataset.pth') # TODO: dataset for actual ODE1 target, since trapezoid would be ODE2
+data = torch.load('data/ode3_dataset.pth') # TODO: dataset for actual ODE1 target, since trapezoid would be ODE2
 x = data['x_train']
 y = data['y_train']
 x_test = data['x_test']
@@ -108,8 +108,11 @@ target_solution = Constructor("Learner", Constructor("DAG",
                                                           & Constructor("output", Literal(1))
                                                           & Constructor("structure", Literal(
                                                               (
-                                                                                                                                    (
-                                                                      (ODE_2_Repository.Copy(3), 1, 3),
+                                                                  (
+                                                                    (repo.Sin(), 1, 1),                                                
+                                                                  ),
+                                                                  (
+                                                                      (ODE_3_Repository.Copy(3), 1, 3),
                                                                   ),
                                                                   (
                                                                       (repo.Linear(1, 1, True), 1, 1),
@@ -168,6 +171,7 @@ target_from_ode2 = Constructor("Learner", Constructor("DAG",
                                                           & Constructor("output", Literal(1))
                                                           & Constructor("structure", Literal(
                                                               (
+                                                                  None,
                                                                   None,
                                                                   None,  # left, split, right
                                                                   None,  # left, gate, right

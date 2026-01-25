@@ -29,11 +29,11 @@ class OscilatorODE(nn.Module):
 
     def forward(self, x):
         x = torch.sin(x)
-        gl = (self.split(x) <= 0).float()
-        gr = 1 - gl
+        gate = (self.split(x) <= 0).float()
+        
 
-        left = self.left(x) * gl
-        right = self.right(x) * gr
+        left = self.left(x) * gate
+        right = self.right(x) * (1 - gate)
 
 
         return left + right

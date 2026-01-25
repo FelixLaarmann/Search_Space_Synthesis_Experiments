@@ -12,6 +12,22 @@ import torch.optim as optim
 
 from synthesis.utils import generate_data
 
+class LTEFunction(torch.autograd.Function):
+    @staticmethod
+    def forward(ctx, x, threshold):
+        ctx.save_for_backward(x.type(torch.DoubleTensor), threshold)
+        # print(f'Forward: {(x <= threshold).float().size()}')
+        return (x <= threshold).float()
+    
+    @staticmethod
+    def backward(ctx, grad_output):
+        x, threshold = ctx.saved_tensors
+        grad_x = torch.zeros_like(x)
+        return grad_x * grad_output, None 
+
+def lte_func(x, threshold=0.0):
+    return LTEFunction.apply(x, threshold)
+
 class ODE_3_Repository:
     """
             The terms have to be in normal form under the following term rewriting system:
@@ -110,7 +126,7 @@ class ODE_3_Repository:
     @dataclass(frozen=True)
     class Tanh:
         trivial = ()
-
+    
     @dataclass(frozen=True)
     class LTE:
         threshold: float = 0
@@ -155,7 +171,7 @@ class ODE_3_Repository:
 
         def iter_relu(self):
             yield ODE_3_Repository.ReLu(inplace=False)
-            #yield ODE_1_Repository.ReLu(inplace=True)  # inplace not supported here
+            #yield ODE_3_Repository.ReLu(inplace=True)  # inplace not supported here
 
         def iter_tanh(self):
             yield ODE_3_Repository.Tanh()
@@ -238,12 +254,12 @@ class ODE_3_Repository:
         def iter_mseloss(self):
             yield ODE_3_Repository.MSEloss(reduction="mean")
             yield ODE_3_Repository.MSEloss(reduction="sum")
-            #yield ODE_1_Repository.MSEloss(reduction="none")
+            #yield ODE_3_Repository.MSEloss(reduction="none")
 
         def iter_l1loss(self):
             yield ODE_3_Repository.L1Loss(reduction="mean")
             yield ODE_3_Repository.L1Loss(reduction="sum")
-            #yield ODE_1_Repository.L1Loss(reduction="none")
+            #yield ODE_3_Repository.L1Loss(reduction="none")
 
         def __iter__(self):
             yield from self.iter_mseloss()
@@ -276,7 +292,7 @@ class ODE_3_Repository:
                 yield ODE_3_Repository.Adam(learning_rate=lr)
 
         def __contains__(self, value):
-            return value is None or (isinstance(value, ODE_1_Repository.Adam) and (value.learning_rate in self.learning_rate_values))
+            return value is None or (isinstance(value, ODE_3_Repository.Adam) and (value.learning_rate in self.learning_rate_values))
 
     class Para(Group):
         name = "Para"
@@ -301,7 +317,8 @@ class ODE_3_Repository:
             yield None
 
         def __contains__(self, value):
-            return (value is None
+            try:
+                return (value is None
                     #or value in ["linear", "sigmoid", "relu", "sharpness_sigmoid", "lte", "sum", "product"]
                     or (isinstance(value, tuple)
                                      and len(value) == 3
@@ -314,6 +331,8 @@ class ODE_3_Repository:
                                      and value[2] in self.dimensions
                                      # TODO: something like this? -> and value[1] == value[2] if not value[0] in self.labels and value[0][0] == "swap" else True
                                      ))
+            except TypeError: # in case value is not hashable
+                raise ValueError("The requested target type has arguments for the dataclasses, that are not part of the repo parameters!")
 
     class ParaTuples(Group):
         name = "ParaTuples"
@@ -1201,9 +1220,11 @@ class ODE_3_Repository:
                                 & Constructor("structure", Var("para5"))
                                 & Constructor("structure", Var("para6"))
                                 & Constructor("structure", Var("para7"))
+                                # & Constructor("structure", Literal("relu"))
                                 & Constructor("structure", Literal(None))
                                 ) & Constructor("non_ID")
                     ),
+
             "lte": SpecificationBuilder()
             .parameter("l", labels, lambda v: list(labels.iter_lte()))
             .parameter("i", dimension)
@@ -1231,7 +1252,6 @@ class ODE_3_Repository:
                                 & Constructor("structure", Literal(None))
                                 ) & Constructor("non_ID")
                     ),
-
 
             "sin": SpecificationBuilder()
             .parameter("l", labels, lambda v: list(labels.iter_sin()))
@@ -1738,7 +1758,6 @@ Learner(
                 [(x, str((l, i, o)) + str(id)) for x in inputs], [str((l, i, o)) + str(id) for _ in range(0, o)],
                 {str((l, i, o)) + str(id): id})),
 
-
             "sin": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: lambda id, inputs: (
                 [(x, str((l, i, o)) + str(id)) for x in inputs], [str((l, i, o)) + str(id) for _ in range(0, o)],
                 {str((l, i, o)) + str(id): id})),
@@ -2022,21 +2041,6 @@ plt.show()
                 raise ValueError(f"Sigmoid expected to produce {self.o} outputs, but got {len(y)}")
             return y
 
-    class SynthLTE(nn.Module):
-        def __init__(self, output_dim, threshold:float=0.0):
-            super().__init__()
-            self.threshold = threshold
-            self.o = output_dim
-
-        def forward(self, x):
-            #x = torch.cat(x, dim=1)
-            if len(x[1]) != self.o:
-                raise ValueError(f"LTE expected {self.o} inputs, but got {len(x)}")
-            y = (x <= self.threshold).float()
-            if len(y[1]) != self.o:
-                raise ValueError(f"LTE expected to produce {self.o} outputs, but got {len(y)}")
-            return y
-
     class SynthSin(nn.Module):
         def __init__(self, output_dim):
             super().__init__()
@@ -2063,6 +2067,23 @@ plt.show()
             y = torch.cos(x)
             if len(y[1]) != self.o:
                 raise ValueError(f"Sin expected to produce {self.o} outputs, but got {len(y)}")
+            return y
+
+    class SynthLTE(nn.Module):
+        def __init__(self, output_dim, threshold:float=0.0):
+            super().__init__()
+            self.threshold = torch.tensor(threshold, dtype=torch.float)
+            self.o = output_dim
+
+        def forward(self, x):
+            #x = torch.cat(x, dim=1)
+            x = x.type(torch.DoubleTensor)
+
+            if len(x[1]) != self.o:
+                raise ValueError(f"LTE expected {self.o} inputs, but got {len(x)}")
+            y = lte_func(x, self.threshold)
+            if len(y[1]) != self.o:
+                raise ValueError(f"LTE expected to produce {self.o} outputs, but got {len(y)}")
             return y
 
     class SumModule(nn.Module):
@@ -2195,10 +2216,155 @@ plt.show()
             "learner": (lambda i, o, r, ls, e, l, opt, loss, optimizer, model: lambda x, y, x_test, y_test: self.learner(i, model, loss, optimizer, e, x, y, x_test, y_test)),
         }
 
+    def to_structure_2_algebra(self):
+        return {
+            "edges": (lambda io, para1, para2, para3, para4, para5, para6, para7, para8, para9, para10, para11, para12, para13, para14, para15, para16: None),
+
+            "swap": (lambda io, n, m, para1, para2, para3, para4, para5, para6, para7, para8, para9, para10, para11, para12, para13, para14, para15, para16: None),
+
+            "linear_layer": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: None),
+
+            "sigmoid": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: None),
+
+            "relu": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: None),
+
+            "tanh": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: None),
+
+            "sum": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: None),
+
+            "product": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: None),
+
+            "copy": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: None),
+
+            "beside_singleton": (lambda i, o, ls, para, x: (x,)),
+
+            "beside_cons": (lambda i, i1, i2, o, o1, o2, ls, head, tail, x, y: (x,) + y),
+
+            "before_singleton": (lambda i, o, r, ls, ls1, x: (x,)),
+
+            "before_cons": (lambda i, j, o, r, ls, head, tail, x, y: (x,) + y),
+
+            "mse_loss": (lambda l: Literal(None)),
+
+            "l1loss": (lambda l: Literal(None)),
+
+            "adam_optimizer": (lambda o: Literal(None)),
+
+            "learner": (lambda i, o, r, ls, e, l, opt, loss, optimizer, model: Constructor("Learner", Constructor("DAG",
+                          Constructor("input", Literal(i))
+                          & Constructor("output", Literal(o))
+                          & Constructor("structure", Literal(model)))
+                                & Constructor("Loss", Constructor("type", loss))
+                                & Constructor("Optimizer", Constructor("type", optimizer))
+                                & Constructor("epochs", Literal(e))
+                                ))
+        }
+
+    def to_structure_3_algebra(self):
+        return {
+            "edges": (lambda io, para1, para2, para3, para4, para5, para6, para7, para8, para9, para10, para11, para12, para13, para14, para15, para16: (("swap", 0, io), io, io)),
+
+            "swap": (lambda io, n, m, para1, para2, para3, para4, para5, para6, para7, para8, para9, para10, para11, para12, para13, para14, para15, para16: (("swap", n, m), io, io)),
+
+            "linear_layer": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: (None, i, o)),
+
+            "sigmoid": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: (None, i, o)),
+
+            "relu": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: (None, i, o)),
+
+            "tanh": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: (None, i, o)),
+
+            "sum": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: (None, i, o)),
+
+            "product": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: (None, i, o)),
+
+            "copy": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: (None, i, o)),
+
+            "beside_singleton": (lambda i, o, ls, para, x: (x,)),
+
+            "beside_cons": (lambda i, i1, i2, o, o1, o2, ls, head, tail, x, y: (x,) + y),
+
+            "before_singleton": (lambda i, o, r, ls, ls1, x: (x,)),
+
+            "before_cons": (lambda i, j, o, r, ls, head, tail, x, y: (x,) + y),
+
+            "mse_loss": (lambda l: Literal(None)),
+
+            "l1loss": (lambda l: Literal(None)),
+
+            "adam_optimizer": (lambda o: Literal(None)),
+
+            "learner": (lambda i, o, r, ls, e, l, opt, loss, optimizer, model: Constructor("Learner", Constructor("DAG",
+                          Constructor("input", Literal(i))
+                          & Constructor("output", Literal(o))
+                          & Constructor("structure", Literal(model)))
+                                & Constructor("Loss", Constructor("type", loss))
+                                & Constructor("Optimizer", Constructor("type", optimizer))
+                                & Constructor("epochs", Literal(e))
+                                ))
+        }
+
+    def pickle_algebra(self):
+        return {
+            "edges": (lambda io, para1, para2, para3, para4, para5, para6, para7, para8, para9, para10, para11, para12,
+                             para13, para14, para15, para16: (("swap", 0, io), io, io)),
+
+            "swap": (
+                lambda io, n, m, para1, para2, para3, para4, para5, para6, para7, para8, para9, para10, para11, para12,
+                       para13, para14, para15, para16: (("swap", n, m), io, io)),
+
+            "linear_layer": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: (l, i, o)),
+
+            "sigmoid": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: (l, i, o)),
+
+            "relu": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: (l, i, o)),
+
+            "tanh": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: (l, i, o)),
+
+            "lte": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: (l, i, o)),
+
+            "sin": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: (l, i, o)),
+
+            "cos": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: (l, i, o)),
+
+            "sum": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: (l, i, o)),
+
+            "product": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: (l, i, o)),
+
+            "copy": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: (l, i, o)),
+
+            "beside_singleton": (lambda i, o, ls, para, x: (x,)),
+
+            "beside_cons": (lambda i, i1, i2, o, o1, o2, ls, head, tail, x, y: (x,) + y),
+
+            "before_singleton": (lambda i, o, r, ls, ls1, x: (x,)),
+
+            "before_cons": (lambda i, j, o, r, ls, head, tail, x, y: (x,) + y),
+
+            "mse_loss": (lambda l: l),
+
+            "l1loss": (lambda l: l),
+
+            "adam_optimizer": (lambda o: o),
+
+            "learner": (lambda i, o, r, ls, e, l, opt, loss, optimizer, model: ((i,o), model, loss, optimizer, e))
+        }
+
+    def from_pickle(self, pickle):
+        (i,o), model, loss, optimizer, e = pickle
+        return Constructor("Learner", Constructor("DAG",
+                          Constructor("input", Literal(i))
+                          & Constructor("output", Literal(o))
+                          & Constructor("structure", Literal(model)))
+                                & Constructor("Loss", Constructor("type", Literal(loss)))
+                                & Constructor("Optimizer", Constructor("type", Literal(optimizer)))
+                                & Constructor("epochs", Literal(e))
+                                )
+
 
 
 if __name__ == "__main__":
-    repo = ODE_3_Repository(linear_feature_dimensions=[1, 2, 5], constant_values=[0, 1, ],
+    repo = ODE_3_Repository(linear_feature_dimensions=[1, 2, 5], constant_values=[0, 1, -1],
                             learning_rate_values=[1e-2], n_epoch_values=[10000])
 
     edge = (("swap", 0, 1), 1, 1)
@@ -2223,26 +2389,20 @@ if __name__ == "__main__":
                                 )
 
 
-    target_3 = Constructor("Learner", Constructor("DAG",
+    target_empty = Constructor("Learner", Constructor("DAG",
                           Constructor("input", Literal(1))
                           & Constructor("output", Literal(1))
                           & Constructor("structure", Literal(
                               (
                                   (
-                                      (repo.Linear(1, 5, True), 1, 5),
+                                      (repo.Linear(1, 5, True), 1, 1),
                                   ),
                                   (
-                                      (repo.Linear(5, 1, True), 5, 1),
-                                  ),
-                                  (
-                                      (repo.Sin(), 1, 1),
-                                  ),
-                                  (
-                                      (repo.Cos(), 1, 1),
+                                      (repo.Linear(1, 1, True), 1, 1),
                                   ),
                               )
                           )))
-                                & Constructor("Loss", Constructor("type", Literal(repo.MSEloss())))
+                                & Constructor("Loss", Constructor("type", Literal(None)))
                                 & Constructor("Optimizer", Constructor("type", Literal(repo.Adam(1e-2))))
                                 & Constructor("epochs", Literal(10000))
                                 )
@@ -2258,14 +2418,124 @@ if __name__ == "__main__":
                                 & Constructor("epochs", Literal(10000))
                                 )
 
+    target_from_trapezoid3 = Constructor("Learner", Constructor("DAG",
+                                                                Constructor("input", Literal(1))
+                                                                & Constructor("output", Literal(1))
+                                                                & Constructor("structure", Literal(
+                                                                    (
+                                                                        (
+                                                                            (None, 1, 3),
+                                                                        ), # x -> (x,x,x)
+                                                                        (
+                                                                            (None, 1, 1),
+                                                                            (None, 1, 1),
+                                                                            (None, 1, 1)
+                                                                        ),  # left, split, right
+                                                                        (
+                                                                            (("swap", 2, 1), 3, 3),
+                                                                            None
+                                                                        ),  # left, gate, right
+                                                                        (
+                                                                            (None, 2, 1),
+                                                                            (None, 1, 1),
+                                                                            edge
+                                                                        ),  # left_out, -gate, right
+                                                                        (
+                                                                            edge,
+                                                                            (None, 1, 1),
+                                                                            edge
+                                                                        ),  # left_out, 1-gate, right
+                                                                        (
+                                                                            edge,
+                                                                            (None, 2, 1)
+                                                                        ),  # left_out, right_out
+                                                                        (
+                                                                            (None, 2, 1),
+                                                                        )
+                                                                    )
+                                                                )))
+                                         & Constructor("Loss", Constructor("type", Literal(None)))
+                                         & Constructor("Optimizer", Constructor("type", Literal(repo.Adam(1e-2))))
+                                         & Constructor("epochs", Literal(10000))
+                                         )
 
-    target = target_3
+    target_from_trapezoid2 = Constructor("Learner", Constructor("DAG",
+                                                                Constructor("input", Literal(1))
+                                                                & Constructor("output", Literal(1))
+                                                                & Constructor("structure", Literal(
+                                                                    (
+                                                                        (
+                                                                            None,
+                                                                        ),
+                                                                        (
+                                                                            None,
+                                                                            None,
+                                                                            None
+                                                                        ),  # left, split, right
+                                                                        (
+                                                                            None,
+                                                                            None,
+                                                                            None
+                                                                        ),  # left, gate, right
+                                                                        (
+                                                                            None,
+                                                                            None,
+                                                                            None
+                                                                        ),  # left_out, -gate, right
+                                                                        (
+                                                                            None,
+                                                                            None,
+                                                                            None
+                                                                        ),  # left_out, 1-gate, right
+                                                                        (
+                                                                            None,
+                                                                            None
+                                                                        ),  # left_out, right_out
+                                                                        (
+                                                                            None,
+                                                                        )
+                                                                    )
+                                                                )))
+                                         & Constructor("Loss", Constructor("type", Literal(None)))
+                                         & Constructor("Optimizer", Constructor("type", Literal(repo.Adam(1e-2))))
+                                         & Constructor("epochs", Literal(10000))
+                                         )
+
+    target_solution = Constructor("Learner", Constructor("DAG",
+                                                         Constructor("input", Literal(1))
+                                                         & Constructor("output", Literal(1))
+                                                         & Constructor("structure", Literal(
+                                                             (
+                                                                 (
+                                                                     (ODE_3_Repository.Copy(2), 1, 2),
+                                                                 ),
+                                                                 (
+                                                                     (repo.Linear(1, 1, True), 1, 1),
+                                                                     (repo.Linear(1, 1, True), 1, 1),
+                                                                 ),
+                                                                 (
+                                                                     edge,
+                                                                     (repo.Tanh(), 1, 1),
+                                                                 ),
+                                                                 (
+                                                                     (repo.Product(), 2, 1),
+                                                                 ),
+                                                                 (
+                                                                     (repo.Product(-1), 1, 1),
+                                                                 )
+                                                             )
+                                                         )))
+                                  & Constructor("Loss", Constructor("type", Literal(repo.MSEloss())))
+                                  & Constructor("Optimizer", Constructor("type", Literal(repo.Adam(1e-2))))
+                                  & Constructor("epochs", Literal(10000)))
+    # TODO Pickle Solution
+    target = target_solution
     synthesizer = SearchSpaceSynthesizer(repo.specification(), {})
 
     search_space = synthesizer.construct_search_space(target).prune()
     print("finish synthesis, start sampling")
 
-    terms =  search_space.enumerate_trees(target, 1000)
+    terms =  search_space.enumerate_trees(target, 10)
 
     #terms = search_space.sample(10, target)
 
@@ -2275,13 +2545,17 @@ if __name__ == "__main__":
 
     #term = terms_list[0]
 
-    print(target)
+    #print(target)
 
     print(f"number of terms: {len(terms_list)}")
-    """
+    #"""
     for t in terms_list:
-        print(t.interpret(repo.pretty_term_algebra()))
-    """
+        pickle = (t.interpret(repo.pickle_algebra()))
+        next_target = repo.from_pickle(pickle)
+        print("pickleing works: " + str(target == next_target))
+        print(target)
+        print(next_target)
+    #"""
 
     class TrapezoidNetPure(nn.Module):
         def __init__(self, random_weights=False, sharpness=None):
@@ -2334,3 +2608,7 @@ if __name__ == "__main__":
         print(t.interpret(repo.pretty_term_algebra()))
         learner = t.interpret(repo.pytorch_function_algebra())
         print("Test Loss: " + str(learner(x, y, x_test, y_test)))
+        print("next")
+        print(t.interpret(repo.to_structure_2_algebra()))
+        print("and last")
+        print(t.interpret(repo.to_structure_3_algebra()))
