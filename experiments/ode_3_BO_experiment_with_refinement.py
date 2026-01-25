@@ -44,7 +44,7 @@ starting = datetime.now().strftime("%Y%m%d_%H%M%S")
 refine = 'ref'
 exp = 'ode_3_bo'
 kernel_choice = "WL"  # alternatively:  hWL
-init_sample_size: int = 10 # 10, 50
+init_sample_size: int = 50 # 10, 50
 budget = (10, 10, 10) # TODO: measure time for whole BO process and increase or decrease budget accordingly, to run within 24hrs
 
 repo = ODE_3_Repository(linear_feature_dimensions=[1, 2, 3, 4], constant_values=[0, 1, -1], learning_rate_values=[1e-2, 5e-3 ,1e-3],

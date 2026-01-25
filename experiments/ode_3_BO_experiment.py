@@ -45,7 +45,7 @@ starting = datetime.now().strftime("%Y%m%d_%H%M%S")
 refine = 'no_ref'
 exp = 'ode_3_bo'
 kernel_choice = "WL1"  # alternatively: "WL1", "WL2", "WL3", hWL
-init_sample_size: int = 10 # 10, 50
+init_sample_size: int = 50 # 10, 50
 budget = 30 # TODO: measure time for whole BO process and increase or decrease budget accordingly, to run within 24hrs
 
 
