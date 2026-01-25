@@ -324,10 +324,10 @@ if __name__ == "__main__":
         plt.savefig(f'{folder}/term_sim_k3_{idx}_{EXPERIMENT_NUMBER}.png')
         plt.savefig(f'{folder}/term_sim_k3_{idx}_{EXPERIMENT_NUMBER}.pdf')
         plt.close()
-
-        gp3.fit(x_trained, y_trained)
-
         try:
+
+            gp3.fit(x_trained, y_trained)
+
             y_pred_next, sigma_next = gp3.predict(x_gp_test, return_std=True)
         except Warning as e: 
             print(x_gp_test.interpret(repo.pretty_term_algebra()))

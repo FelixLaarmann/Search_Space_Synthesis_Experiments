@@ -367,9 +367,9 @@ if __name__ == "__main__":
         plt.savefig(f'{folder}/term_sim_k1_{idx}_{EXPERIMENT_NUMBER}.png')
         plt.savefig(f'{folder}/term_sim_k1_{idx}_{EXPERIMENT_NUMBER}.pdf')
         plt.close()
-
-        gp1.fit(x_trained, y_trained)
         try:
+
+            gp1.fit(x_trained, y_trained)
             y_pred_next, sigma_next = gp1.predict(x_gp_test, return_std=True)
         except Warning as e: 
             print(x_gp_test.interpret(repo.pretty_term_algebra()))
@@ -393,10 +393,10 @@ if __name__ == "__main__":
         plt.savefig(f'{folder}/term_sim_k2_{idx}_{EXPERIMENT_NUMBER}.pdf')
         plt.close()
 
-
-        gp2.fit(x_trained, y_trained)
-
         try:
+
+            gp2.fit(x_trained, y_trained)
+
             y_pred_next, sigma_next = gp2.predict(x_gp_test, return_std=True)
         except Warning as e: 
             print(x_gp_test.interpret(repo.pretty_term_algebra()))
@@ -418,10 +418,10 @@ if __name__ == "__main__":
         plt.savefig(f'{folder}/term_sim_k3_{idx}_{EXPERIMENT_NUMBER}.png')
         plt.savefig(f'{folder}/term_sim_k3_{idx}_{EXPERIMENT_NUMBER}.pdf')
         plt.close()
-
-        gp3.fit(x_trained, y_trained)
-
         try:
+
+            gp3.fit(x_trained, y_trained)
+
             y_pred_next, sigma_next = gp3.predict(x_gp_test, return_std=True)
         except Warning as e: 
             print(x_gp_test.interpret(repo.pretty_term_algebra()))
