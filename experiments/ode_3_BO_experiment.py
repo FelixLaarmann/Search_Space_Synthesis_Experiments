@@ -76,29 +76,29 @@ def f_obj(t):
 # TODO: target that synthesizes exactly the one solution, from which the data was generated
 #"""
 """
-                                                                  ((ODE_2_Repository.Copy(1), 1, 1),),
-                                                                  ((ODE_2_Repository.Linear(1, 4), 1, 4),),
+                                                                  ((repo.Copy(1), 1, 1),),
+                                                                  ((repo.Linear(1, 4), 1, 4),),
                                                                   (
-                                                                      (ODE_2_Repository.Product(-1), 2, 1),
+                                                                      (repo.Product(-1), 2, 1),
                                                                       edge, 
                                                                       edge,
                                                                   ),
                                                                   (
                                                                       edge, 
-                                                                      (ODE_2_Repository.Tanh(), 2, 2),
+                                                                      (repo.Tanh(), 2, 2),
                                                                   ),
                                                                   (
-                                                                      (ODE_2_Repository.Sum(-1), 3, 1),
+                                                                      (repo.Sum(-1), 3, 1),
                                                                   ),
                                                                   (
-                                                                    (ODE_2_Repository.Copy(4), 1, 4),
+                                                                    (repo.Copy(4), 1, 4),
                                                                   ),
                                                                   (
-                                                                      (ODE_2_Repository.Sum(0), 2, 1),
-                                                                      (ODE_2_Repository.Product(-1), 2, 1),
+                                                                      (repo.Sum(0), 2, 1),
+                                                                      (repo.Product(-1), 2, 1),
                                                                   ),
                                                                   (
-                                                                      (ODE_2_Repository.Linear(2, 1, bias=False), 2, 1),
+                                                                      (repo.Linear(2, 1, bias=False), 2, 1),
                                                                   ),
 
 """
@@ -112,7 +112,7 @@ target_solution = Constructor("Learner", Constructor("DAG",
                                                                     (repo.Sin(), 1, 1),                                                
                                                                   ),
                                                                   (
-                                                                      (ODE_3_Repository.Copy(3), 1, 3),
+                                                                      (repo.Copy(3), 1, 3),
                                                                   ),
                                                                   (
                                                                       (repo.Linear(1, 1, True), 1, 1),
@@ -193,8 +193,11 @@ def to_grakel_graph_1(t):
     G = nx.MultiDiGraph()
     G.add_edges_from(edgelist)
 
-    relabel = {n: "Node"
+    relabel = {n: "Activation" if ("Sigmoid" in n or "ReLu" in n or "Tanh" in n) else "Node"
                for n in G.nodes()}
+
+    # relabel = {n: "Node"
+    #           for n in G.nodes()}
 
     for n in G.nodes():
         G.nodes[n]['symbol'] = relabel[n]
@@ -214,6 +217,9 @@ def to_grakel_graph_2(t):
                     "Sum" if "Sum" in n else
                     "Product" if "Product" in n else
                     "Copy" if "Copy" in n else
+                    "LTE" if "LTE" in n else
+                    "Sin" if "Sin" in n else
+                    "Cos" if "Cos" in n else
                     "Node"
                for n in G.nodes()}
 

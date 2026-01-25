@@ -2036,13 +2036,15 @@ plt.show()
             for _ in range(n_epochs):
                 optimizer.zero_grad()
                 pred = model(x).ravel()
-                loss = loss_fn(pred, y)
+                test = pred.reshape_as(y)
+                loss = loss_fn(test, y)
                 loss.backward()
                 optimizer.step()
 
         with torch.inference_mode():
             y_pred = model(x_test).ravel()
-            loss = loss_fn(y_pred, y_test)
+            test = y_pred.reshape_as(y_test)
+            loss = loss_fn(test, y_test)
             return loss.item()
 
     def pytorch_function_algebra(self):

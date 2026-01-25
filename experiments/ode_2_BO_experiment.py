@@ -108,8 +108,8 @@ target_solution = Constructor("Learner", Constructor("DAG",
                                                           & Constructor("output", Literal(1))
                                                           & Constructor("structure", Literal(
                                                               (
-                                                                                                                                    (
-                                                                      (ODE_2_Repository.Copy(3), 1, 3),
+                                                                  (
+                                                                      (repo.Copy(3), 1, 3),
                                                                   ),
                                                                   (
                                                                       (repo.Linear(1, 1, True), 1, 1),
@@ -189,8 +189,11 @@ def to_grakel_graph_1(t):
     G = nx.MultiDiGraph()
     G.add_edges_from(edgelist)
 
-    relabel = {n: "Node"
+    relabel = {n: "Activation" if ("Sigmoid" in n or "ReLu" in n or "Tanh" in n) else "Node"
                for n in G.nodes()}
+
+    # relabel = {n: "Node"
+    #           for n in G.nodes()}
 
     for n in G.nodes():
         G.nodes[n]['symbol'] = relabel[n]
@@ -210,6 +213,7 @@ def to_grakel_graph_2(t):
                     "Sum" if "Sum" in n else
                     "Product" if "Product" in n else
                     "Copy" if "Copy" in n else
+                    "LTE" if "LTE" in n else
                     "Node"
                for n in G.nodes()}
 
