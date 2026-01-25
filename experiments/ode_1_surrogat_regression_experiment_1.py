@@ -19,8 +19,12 @@ import dill
 import sys 
 import time 
 
+import warnings
+
 from pathlib import Path
 from datetime import datetime
+
+warnings.filterwarnings('error')
 
 EXPERIMENT_NUMBER = "S1"
 starting = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -365,8 +369,12 @@ if __name__ == "__main__":
         plt.close()
 
         gp1.fit(x_trained, y_trained)
+        try:
+            y_pred_next, sigma_next = gp1.predict(x_gp_test, return_std=True)
+        except Warning as e: 
+            print(x_gp_test.interpret(repo.pretty_term_algebra()))
+            raise 
 
-        y_pred_next, sigma_next = gp1.predict(x_gp_test, return_std=True)
 
         y_preds_gp1.append(y_pred_next)
         y_sigmas_gp1.append(sigma_next)
@@ -388,7 +396,12 @@ if __name__ == "__main__":
 
         gp2.fit(x_trained, y_trained)
 
-        y_pred_next, sigma_next = gp2.predict(x_gp_test, return_std=True)
+        try:
+            y_pred_next, sigma_next = gp2.predict(x_gp_test, return_std=True)
+        except Warning as e: 
+            print(x_gp_test.interpret(repo.pretty_term_algebra()))
+            raise
+
         y_preds_gp2.append(y_pred_next)
         y_sigmas_gp2.append(sigma_next)
         pears_gp2.append(pearsonr(y_gp_test, np.nan_to_num(y_pred_next))[0])
@@ -408,7 +421,11 @@ if __name__ == "__main__":
 
         gp3.fit(x_trained, y_trained)
 
-        y_pred_next, sigma_next = gp3.predict(x_gp_test, return_std=True)
+        try:
+            y_pred_next, sigma_next = gp3.predict(x_gp_test, return_std=True)
+        except Warning as e: 
+            print(x_gp_test.interpret(repo.pretty_term_algebra()))
+            raise
 
         y_preds_gp3.append(y_pred_next)
         y_sigmas_gp3.append(sigma_next)
