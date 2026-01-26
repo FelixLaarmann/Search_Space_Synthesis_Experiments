@@ -324,7 +324,7 @@ if __name__ == "__main__":
     result['elapsed_time'] = end - start
     x_res = prepare_cls_data(result['x'], repo)
     result["x"] = x_res 
-    best_tree = prepare_cls_data([result["best_tree"], repo])
+    best_tree = prepare_cls_data([result["best_tree"]], repo)
     result["best_tree"] = best_tree
     # compare result["best_tree"] to data generating tree, if available with the kernels -- Not here
     pickle_data(result, name='result', refine=refine, exp=exp, starting=starting, init_samples=init_sample_size, kernel_choice=kernel_choice)
