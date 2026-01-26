@@ -55,6 +55,7 @@ def unpickle_cls_data(x_p, repo, synthesizer):
         # print(f'Num Terms: {len(list(terms))}')
         assert(len(list(terms)) == 1)
         res.append(list(terms)[0])
+    return res 
 
 
 
@@ -335,7 +336,7 @@ if __name__ == "__main__":
     result['elapsed_time'] = end - start
     # safe results (values from result, best_y, time etc.)
     pickle_data(result, name='result_1', refine=refine, exp=exp, starting=starting, init_samples=init_sample_size, kernel_choice=kernel_choice)
-    pickle_data(kernel, name='kernel_1', refine=refine, exp=exp, starting=starting, init_samples=init_sample_size, kernel_choice=kernel_choice)
+    # pickle_data(kernel, name='kernel_1', refine=refine, exp=exp, starting=starting, init_samples=init_sample_size, kernel_choice=kernel_choice)
 
     ##############################################################
 
