@@ -338,7 +338,7 @@ if __name__ == "__main__":
     x_res = prepare_cls_data(result['x'], repo)
     result["x"] = x_res 
     best_tree = prepare_cls_data([result["best_tree"]], repo)
-    result["best_tree"] = best_tree
+    result["best_tree"] = best_tree[0]
     optimized_kernel = result['gp_model'].kernel_
     result.pop('gp_model')
     # compare result["best_tree"] to data generating tree, if available with the kernels -- Not here
@@ -397,7 +397,7 @@ if __name__ == "__main__":
     x_res = prepare_cls_data(result['x'], repo)
     result["x"] = x_res 
     best_tree = prepare_cls_data([result["best_tree"]], repo)
-    result["best_tree"] = best_tree
+    result["best_tree"] = best_tree[0]
     optimized_kernel = result['gp_model'].kernel_
     result.pop('gp_model')
     # compare result["best_tree"] to data generating tree, if available with the kernels -- Not here
@@ -454,7 +454,7 @@ if __name__ == "__main__":
     x_res = prepare_cls_data(result['x'], repo)
     result["x"] = x_res 
     best_tree = prepare_cls_data([result["best_tree"]], repo)
-    result["best_tree"] = best_tree
+    result["best_tree"] = best_tree[0]
     optimized_kernel = result['gp_model'].kernel_
     result.pop('gp_model')
     # compare result["best_tree"] to data generating tree, if available with the kernels -- Not here
