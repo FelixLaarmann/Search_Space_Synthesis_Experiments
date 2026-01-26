@@ -530,7 +530,7 @@ if __name__ == "__main__":
     plt.savefig(f'{folder}/pc_k3_{EXPERIMENT_NUMBER}.pdf')
     plt.close()
 
-    plt.plot(range(slice_size, train_size + slice_size, slice_size), kts_gp_h, linestyle="dotted")
+    """plt.plot(range(slice_size, train_size + slice_size, slice_size), kts_gp_h, linestyle="dotted")
     plt.xlabel("# of samples")
     plt.ylabel("tau")
     _ = plt.title("Kendall Tau correlation for GP with hierarchical kernel (with HPO)")
@@ -544,7 +544,7 @@ if __name__ == "__main__":
     _ = plt.title("Pearson correlation for GP with hierarchical kernel (with HPO)")
     plt.savefig(f'{folder}/pc_hk_{EXPERIMENT_NUMBER}.png')
     plt.savefig(f'{folder}/pc_hk_{EXPERIMENT_NUMBER}.pdf')
-    plt.close()
+    plt.close()"""
 
     # Save data
     regression_data = {
@@ -556,16 +556,16 @@ if __name__ == "__main__":
         'y_sigmas_gp2' : y_sigmas_gp2,
         'y_preds_gp3' : y_preds_gp3,
         'y_sigmas_gp3' : y_sigmas_gp3,
-        'y_preds_gp_h': y_preds_gp_h,
-        'y_sigmas_gp_h': y_sigmas_gp_h,
+        # 'y_preds_gp_h': y_preds_gp_h,
+        # 'y_sigmas_gp_h': y_sigmas_gp_h,
         'pears_gp1' : pears_gp1,
         'kts_gp1' : kts_gp1,
         'pears_gp2' : pears_gp2,
         'kts_gp2' : kts_gp2,
         'pears_gp3' : pears_gp3,
         'kts_gp3' : kts_gp3,
-        'pears_gp_h': pears_gp_h,
-        'kts_gp_h': kts_gp_h
+        # 'pears_gp_h': pears_gp_h,
+        # 'kts_gp_h': kts_gp_h
     }
 
     with open(f'{folder}/regression_data_{EXPERIMENT_NUMBER}.pkl', 'wb') as f:
