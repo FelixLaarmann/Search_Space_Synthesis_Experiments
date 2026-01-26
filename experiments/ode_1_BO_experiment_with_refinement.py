@@ -349,9 +349,10 @@ if __name__ == "__main__":
     # pickle_data(kernel, name='kernel_1', refine=refine, exp=exp, starting=starting, init_samples=init_sample_size, kernel_choice=kernel_choice)
 
     ##############################################################
-    best_tree_unpacked = unpickle_cls_data([result['best_tree']], repo, synthesizer)[0]
+    result["best_tree"]  = unpickle_cls_data([result['best_tree']], repo, synthesizer)[0]
+    
+    next_target = result["best_tree"].interpret(repo.to_structure_2_algebra())
 
-    next_target = best_tree_unpacked.interpret(repo.to_structure_2_algebra())
     print("Next Target: ", next_target)
     synthesizer = SearchSpaceSynthesizer(repo.specification(), {})
 
@@ -380,7 +381,7 @@ if __name__ == "__main__":
 
     # result is a dictionary with keys: "best_tree", "x", "y", "gp_model"
     result = bo.bayesian_optimisation(n_iters=budget[1], obj_fun=f_obj(x_data_fucking_side_effects, x_data_fucking_side_effects, x_data_fucking_side_effects, x_data_fucking_side_effects),
-                                      x0=[best_tree_unpacked], y0=[best_y], n_pre_samples=init_sample_size,
+                                      x0=[result["best_tree"]], y0=[best_y], n_pre_samples=init_sample_size,
                                       greater_is_better=False,
                                       ei_xi=0.01)  # adjusting ei_xi allows to trade off exploration vs exploitation. small xi (0.001) -> exploitation, large xi (0.1)-> exploration
     end = time.time()
@@ -409,8 +410,9 @@ if __name__ == "__main__":
     # pickle_data(kernel, name='kernel_2', refine=refine, exp=exp, starting=starting, init_samples=init_sample_size, kernel_choice=kernel_choice)
 
     ##############################################################
-    best_tree_unpacked = unpickle_cls_data([result['best_tree']], repo, synthesizer)[0]
-    last_target = best_tree_unpacked.interpret(repo.to_structure_3_algebra())
+    result["best_tree"]  = unpickle_cls_data([result['best_tree']], repo, synthesizer)[0]
+
+    last_target = result["best_tree"].interpret(repo.to_structure_3_algebra())
 
     print("Last Target: ", last_target)
     synthesizer = SearchSpaceSynthesizer(repo.specification(), {})
@@ -437,7 +439,7 @@ if __name__ == "__main__":
     start = time.time()
 
     # result is a dictionary with keys: "best_tree", "x", "y", "gp_model"
-    result = bo.bayesian_optimisation(n_iters=budget[2], obj_fun=f_obj(x_data_fucking_side_effects, x_data_fucking_side_effects, x_data_fucking_side_effects, x_data_fucking_side_effects), x0=[best_tree_unpacked], y0=[best_y],
+    result = bo.bayesian_optimisation(n_iters=budget[2], obj_fun=f_obj(x_data_fucking_side_effects, x_data_fucking_side_effects, x_data_fucking_side_effects, x_data_fucking_side_effects), x0=[result["best_tree"]], y0=[best_y],
                                       n_pre_samples=init_sample_size,
                                       greater_is_better=False,
                                       ei_xi=0.001)  # adjusting ei_xi allows to trade off exploration vs exploitation. small xi (0.001) -> exploitation, large xi (0.1)-> exploration
