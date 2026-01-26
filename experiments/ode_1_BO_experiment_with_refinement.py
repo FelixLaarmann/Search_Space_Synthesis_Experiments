@@ -63,8 +63,8 @@ starting = datetime.now().strftime("%Y%m%d_%H%M%S")
 refine = 'ref'
 exp = 'ode_1_bo'
 kernel_choice = "WL"  # alternatively:  hWL
-init_sample_size: int = 50 # 10, 50
-budget = (10, 10, 10) # TODO: measure time for whole BO process and increase or decrease budget accordingly, to run within 24hrs
+init_sample_size: int = 10 # 10, 50
+budget = (8, 8, 8) # TODO: measure time for whole BO process and increase or decrease budget accordingly, to run within 24hrs
 
 repo = ODE_1_Repository(linear_feature_dimensions=[1, 2, 3, 4], constant_values=[0, 1, -1], learning_rate_values=[1e-2, 5e-3 ,1e-3],
                         n_epoch_values=[1000])
@@ -235,7 +235,7 @@ if __name__ == "__main__":
                               kernel_optimizer=kernel.optimize_hyperparameter, n_restarts_optimizer=2,
                               population_size=100, tournament_size=5,
                               crossover_rate=0.85, mutation_rate=0.35,
-                              generation_limit=50, elitism=1,
+                              generation_limit=25, elitism=1,
                               enforce_diversity=False)
 
     """
@@ -335,7 +335,17 @@ if __name__ == "__main__":
     print(f'Elapsed Time: {end - start}')
     result['elapsed_time'] = end - start
     # safe results (values from result, best_y, time etc.)
+    x_res = prepare_cls_data(result['x'], repo)
+    result["x"] = x_res 
+    best_tree = prepare_cls_data([result["best_tree"]], repo)
+    result["best_tree"] = best_tree
+    optimized_kernel = result['gp_model'].kernel_
+    result.pop('gp_model')
+    # compare result["best_tree"] to data generating tree, if available with the kernels -- Not here
     pickle_data(result, name='result_1', refine=refine, exp=exp, starting=starting, init_samples=init_sample_size, kernel_choice=kernel_choice)
+    pickle_data(optimized_kernel, name='optimized_kernel_1', refine=refine, exp=exp, starting=starting, init_samples=init_sample_size, kernel_choice=kernel_choice)
+
+    # pickle_data(result, name='result_1', refine=refine, exp=exp, starting=starting, init_samples=init_sample_size, kernel_choice=kernel_choice)
     # pickle_data(kernel, name='kernel_1', refine=refine, exp=exp, starting=starting, init_samples=init_sample_size, kernel_choice=kernel_choice)
 
     ##############################################################
@@ -362,7 +372,7 @@ if __name__ == "__main__":
                               kernel_optimizer=kernel.optimize_hyperparameter, n_restarts_optimizer=2,
                               population_size=100, tournament_size=5,
                               crossover_rate=0.85, mutation_rate=0.35,
-                              generation_limit=50, elitism=1,
+                              generation_limit=25, elitism=1,
                               enforce_diversity=False)
 
     start = time.time()
@@ -383,8 +393,19 @@ if __name__ == "__main__":
     print(f'Elapsed Time: {end - start}')
     # safe results (values from result, best_y, time etc.)
     result['elapsed_time'] = end - start 
+
+    x_res = prepare_cls_data(result['x'], repo)
+    result["x"] = x_res 
+    best_tree = prepare_cls_data([result["best_tree"]], repo)
+    result["best_tree"] = best_tree
+    optimized_kernel = result['gp_model'].kernel_
+    result.pop('gp_model')
+    # compare result["best_tree"] to data generating tree, if available with the kernels -- Not here
     pickle_data(result, name='result_2', refine=refine, exp=exp, starting=starting, init_samples=init_sample_size, kernel_choice=kernel_choice)
-    pickle_data(kernel, name='kernel_2', refine=refine, exp=exp, starting=starting, init_samples=init_sample_size, kernel_choice=kernel_choice)
+    pickle_data(optimized_kernel, name='optimized_kernel_2', refine=refine, exp=exp, starting=starting, init_samples=init_sample_size, kernel_choice=kernel_choice)
+
+    # pickle_data(result, name='result_2', refine=refine, exp=exp, starting=starting, init_samples=init_sample_size, kernel_choice=kernel_choice)
+    # pickle_data(kernel, name='kernel_2', refine=refine, exp=exp, starting=starting, init_samples=init_sample_size, kernel_choice=kernel_choice)
 
     ##############################################################
     last_target = result["best_tree"].interpret(repo.to_structure_2_algebra())
@@ -408,7 +429,7 @@ if __name__ == "__main__":
                               kernel_optimizer=kernel.optimize_hyperparameter, n_restarts_optimizer=2,
                               population_size=100, tournament_size=5,
                               crossover_rate=0.85, mutation_rate=0.35,
-                              generation_limit=50, elitism=1,
+                              generation_limit=25, elitism=1,
                               enforce_diversity=False)
 
     start = time.time()
@@ -429,8 +450,19 @@ if __name__ == "__main__":
     print(f'Elapsed Time: {end - start}')
     # safe results (values from result, best_y, time etc.)
     result['elapsed_time'] = end - start
+
+    x_res = prepare_cls_data(result['x'], repo)
+    result["x"] = x_res 
+    best_tree = prepare_cls_data([result["best_tree"]], repo)
+    result["best_tree"] = best_tree
+    optimized_kernel = result['gp_model'].kernel_
+    result.pop('gp_model')
+    # compare result["best_tree"] to data generating tree, if available with the kernels -- Not here
     pickle_data(result, name='result_3', refine=refine, exp=exp, starting=starting, init_samples=init_sample_size, kernel_choice=kernel_choice)
-    pickle_data(kernel, name='kernel_3', refine=refine, exp=exp, starting=starting, init_samples=init_sample_size, kernel_choice=kernel_choice)
+    pickle_data(optimized_kernel, name='optimized_kernel_3', refine=refine, exp=exp, starting=starting, init_samples=init_sample_size, kernel_choice=kernel_choice)
+
+    # pickle_data(result, name='result_3', refine=refine, exp=exp, starting=starting, init_samples=init_sample_size, kernel_choice=kernel_choice)
+    # pickle_data(kernel, name='kernel_3', refine=refine, exp=exp, starting=starting, init_samples=init_sample_size, kernel_choice=kernel_choice)
 
     # compare result["best_tree"] to data generating tree, if available
     # comparison can be done via kernels, to measure how similar the structures are

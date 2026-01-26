@@ -76,6 +76,8 @@ target_solution = Constructor("Learner", Constructor("DAG",
 synthesizer = SearchSpaceSynthesizer(repo.specification(), {})
 search_space = synthesizer.construct_search_space(target_solution).prune()
 
-with open("results/20260126_125056/result_WL1.pkl", 'rb') as f: 
+with open("results/20260126_131224/result_WL1.pkl", 'rb') as f: 
     data = dill.load(f)
 print(data)
+
+

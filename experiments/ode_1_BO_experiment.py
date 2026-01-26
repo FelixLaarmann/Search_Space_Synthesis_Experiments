@@ -62,7 +62,7 @@ refine = 'no_ref'
 exp = 'ode_1_bo'
 kernel_choice = "WL1"  # alternatively: "WL1", "WL2", "WL3", hWL
 init_sample_size: int = 10 # 10, 50
-budget = 10 # TODO: measure time for whole BO process and increase or decrease budget accordingly, to run within 24hrs
+budget = 24 # TODO: measure time for whole BO process and increase or decrease budget accordingly, to run within 24hrs
 
 repo = ODE_1_Repository(linear_feature_dimensions=[1, 2, 3, 4], constant_values=[0, 1, -1], learning_rate_values=[1e-2, 5e-3 ,1e-3],
                         n_epoch_values=[1000])
@@ -305,9 +305,9 @@ if __name__ == "__main__":
 
     bo = BayesianOptimization(search_space, target, kernel=kernel,
                               kernel_optimizer=kernel.optimize_hyperparameter, n_restarts_optimizer=2,
-                              population_size=10, tournament_size=5,
+                              population_size=100, tournament_size=5,
                               crossover_rate=0.85, mutation_rate=0.35,
-                              generation_limit=5, elitism=1,
+                              generation_limit=25, elitism=1,
                               enforce_diversity=False)
 
     start = time.time()
