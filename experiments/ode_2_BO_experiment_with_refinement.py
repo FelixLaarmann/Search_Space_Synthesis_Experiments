@@ -353,7 +353,7 @@ if __name__ == "__main__":
     if kernel_choice == "WL":
         kernel = WeisfeilerLehmanKernel(n_iter=1, to_grakel_graph=to_grakel_graph_2)
     elif kernel_choice == "hWL":
-        kernel = result["gp_model"].kernel   # kernel with optimized hyperparameters from previous BO run
+        kernel = result["gp_model"].kernel_   # kernel with optimized hyperparameters from previous BO run
     else:
         raise ValueError(f"Unknown kernel choice: {kernel_choice}")
 
@@ -399,7 +399,7 @@ if __name__ == "__main__":
     if kernel_choice == "WL":
         kernel = WeisfeilerLehmanKernel(n_iter=1, to_grakel_graph=to_grakel_graph_3)
     elif kernel_choice == "hWL":
-        kernel = result["gp_model"].kernel  # kernel with optimized hyperparameters from previous BO run
+        kernel = result["gp_model"].kernel_  # kernel with optimized hyperparameters from previous BO run
     else:
         raise ValueError(f"Unknown kernel choice: {kernel_choice}")
 
