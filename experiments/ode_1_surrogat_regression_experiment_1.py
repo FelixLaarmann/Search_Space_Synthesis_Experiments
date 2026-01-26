@@ -236,7 +236,7 @@ if __name__ == "__main__":
 
     plot_resolution = 40
 
-    sample_size = 500
+    sample_size = 50
 
     test_size = int(sample_size // 5)
 
@@ -473,7 +473,7 @@ if __name__ == "__main__":
         plt.savefig(f'{folder}/term_sim_hkf_{idx}_{EXPERIMENT_NUMBER}.pdf')
         plt.close()
 
-        gp_h.fit(x_trained, y_trained)
+        """gp_h.fit(x_trained, y_trained)
 
         y_pred_next, sigma_next = gp_h.predict(x_gp_test, return_std=True)
 
@@ -481,7 +481,7 @@ if __name__ == "__main__":
         y_sigmas_gp_h.append(sigma_next)
         pears_gp_h.append(pearsonr(y_gp_test, np.nan_to_num(y_pred_next))[0])
         kts_gp_h.append(kendalltau(y_gp_test, np.nan_to_num(y_pred_next))[0])
-
+        """
     plt.plot(range(slice_size, train_size + slice_size, slice_size), kts_gp1, linestyle="dotted")
     plt.xlabel("# of samples")
     plt.ylabel("tau")
