@@ -39,12 +39,30 @@ def pickle_data(data, name: str, refine: str, exp: str, init_samples: int, base:
     with open(f'{d_path}/{f_name}.pkl', 'wb') as f: 
         dill.dump(data, f)
 
+def prepare_cls_data(x_p, repo):
+    res = []
+    for term in x_p:
+        pickled_term = term.interpret(repo.pickle_algebra())
+        res.append(pickled_term)
+    return res 
+
+def unpickle_cls_data(x_p, repo, synthesizer):
+    res = []
+    for idx, x_pickle in enumerate(x_p):
+        target_ = repo.from_pickle(x_pickle)
+        search_space_tmp = synthesizer.construct_search_space(target_)
+        terms = list(search_space_tmp.enumerate_trees(target_, 10))
+        # print(f'Num Terms: {len(list(terms))}')
+        assert(len(list(terms)) == 1)
+        res.append(list(terms)[0])
+    return res 
+
 starting = datetime.now().strftime("%Y%m%d_%H%M%S")
 refine = 'no_ref'
 exp = 'ode_1_bo'
 kernel_choice = "WL1"  # alternatively: "WL1", "WL2", "WL3", hWL
-init_sample_size: int = 50 # 10, 50
-budget = 30 # TODO: measure time for whole BO process and increase or decrease budget accordingly, to run within 24hrs
+init_sample_size: int = 10 # 10, 50
+budget = 10 # TODO: measure time for whole BO process and increase or decrease budget accordingly, to run within 24hrs
 
 repo = ODE_1_Repository(linear_feature_dimensions=[1, 2, 3, 4], constant_values=[0, 1, -1], learning_rate_values=[1e-2, 5e-3 ,1e-3],
                         n_epoch_values=[1000])
@@ -287,9 +305,9 @@ if __name__ == "__main__":
 
     bo = BayesianOptimization(search_space, target, kernel=kernel,
                               kernel_optimizer=kernel.optimize_hyperparameter, n_restarts_optimizer=2,
-                              population_size=100, tournament_size=5,
+                              population_size=10, tournament_size=5,
                               crossover_rate=0.85, mutation_rate=0.35,
-                              generation_limit=50, elitism=1,
+                              generation_limit=5, elitism=1,
                               enforce_diversity=False)
 
     start = time.time()
@@ -305,6 +323,12 @@ if __name__ == "__main__":
         print(f"Tree: {x.interpret(repo.pretty_term_algebra())}, Test Loss: {y}")
     print(f'Elapsed Time: {end - start}')
     result['elapsed_time'] = end - start
+    x_res = prepare_cls_data(result['x'], repo)
+    result["x"] = x_res 
+    best_tree = prepare_cls_data([result["best_tree"]], repo)
+    result["best_tree"] = best_tree
+    optimized_kernel = result['gp_model'].kernel_
+    result.pop('gp_model')
     # compare result["best_tree"] to data generating tree, if available with the kernels -- Not here
     pickle_data(result, name='result', refine=refine, exp=exp, starting=starting, init_samples=init_sample_size, kernel_choice=kernel_choice)
-    pickle_data(kernel, name='kernel', refine=refine, exp=exp, starting=starting, init_samples=init_sample_size, kernel_choice=kernel_choice)
+    pickle_data(optimized_kernel, name='optimized_kernel', refine=refine, exp=exp, starting=starting, init_samples=init_sample_size, kernel_choice=kernel_choice)
