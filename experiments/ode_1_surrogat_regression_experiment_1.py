@@ -236,7 +236,7 @@ if __name__ == "__main__":
 
     plot_resolution = 40
 
-    sample_size = 50
+    sample_size = 500
 
     test_size = int(sample_size // 5)
 
