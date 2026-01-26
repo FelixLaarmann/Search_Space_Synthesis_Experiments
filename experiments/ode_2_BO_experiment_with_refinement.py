@@ -395,7 +395,7 @@ if __name__ == "__main__":
 
     # result is a dictionary with keys: "best_tree", "x", "y", "gp_model"
     result = bo.bayesian_optimisation(n_iters=budget[1], obj_fun=f_obj(x_data_fucking_side_effects, x_data_fucking_side_effects, x_data_fucking_side_effects, x_data_fucking_side_effects),
-                                      x0=[result["best_tree"]], y0=[best_y], n_pre_samples=init_sample_size,
+                                      x0=[best_tree_unpacked], y0=[best_y], n_pre_samples=init_sample_size,
                                       greater_is_better=False,
                                       ei_xi=0.01)  # adjusting ei_xi allows to trade off exploration vs exploitation. small xi (0.001) -> exploitation, large xi (0.1)-> exploration
     end = time.time()
@@ -448,7 +448,7 @@ if __name__ == "__main__":
 
     # result is a dictionary with keys: "best_tree", "x", "y", "gp_model"
     result = bo.bayesian_optimisation(n_iters=budget[2], obj_fun=f_obj(x_data_fucking_side_effects, x_data_fucking_side_effects, x_data_fucking_side_effects, x_data_fucking_side_effects),
-                                      x0=[result["best_tree"]], y0=[best_y],
+                                      x0=[best_tree_unpacked], y0=[best_y],
                                       n_pre_samples=init_sample_size,
                                       greater_is_better=False,
                                       ei_xi=0.001)  # adjusting ei_xi allows to trade off exploration vs exploitation. small xi (0.001) -> exploitation, large xi (0.1)-> exploration
