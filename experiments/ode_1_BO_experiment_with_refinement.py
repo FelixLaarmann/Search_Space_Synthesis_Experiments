@@ -39,6 +39,24 @@ def pickle_data(data, name: str, refine: str, exp: str, init_samples: int, base:
     with open(f'{d_path}/{f_name}.pkl', 'wb') as f: 
         dill.dump(data, f)
 
+def prepare_cls_data(x_p, repo):
+    res = []
+    for term in x_p:
+        pickled_term = term.interpret(repo.pickle_algebra())
+        res.append(pickled_term)
+    return res 
+
+def unpickle_cls_data(x_p, repo, synthesizer):
+    res = []
+    for idx, x_pickle in enumerate(x_p):
+        target_ = repo.from_pickle(x_pickle)
+        search_space_tmp = synthesizer.construct_search_space(target_)
+        terms = list(search_space_tmp.enumerate_trees(target_, 10))
+        # print(f'Num Terms: {len(list(terms))}')
+        assert(len(list(terms)) == 1)
+        res.append(list(terms)[0])
+
+
 
 starting = datetime.now().strftime("%Y%m%d_%H%M%S")
 refine = 'ref'
