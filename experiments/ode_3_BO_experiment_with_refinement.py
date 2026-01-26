@@ -257,7 +257,7 @@ if __name__ == "__main__":
                               kernel_optimizer=kernel.optimize_hyperparameter, n_restarts_optimizer=2,
                               population_size=50, tournament_size=5,
                               crossover_rate=0.85, mutation_rate=0.35,
-                              generation_limit=25, elitism=1,
+                              generation_limit=10, elitism=1,
                               enforce_diversity=False)
 
     """
@@ -369,9 +369,10 @@ if __name__ == "__main__":
     pickle_data(optimized_kernel, name='optimized_kernel_1', refine=refine, exp=exp, starting=starting, init_samples=init_sample_size, kernel_choice=kernel_choice)
 
     ##############################################################
+    best_tree_unpacked = unpickle_cls_data([result['best_tree']], repo, synthesizer)[0]
 
-    next_target = result["best_tree"].interpret(repo.to_structure_2_algebra())
-    print("Next Target: ", next_target)
+    next_target = best_tree_unpacked.interpret(repo.to_structure_2_algebra())
+
     synthesizer = SearchSpaceSynthesizer(repo.specification(), {})
 
     search_space = synthesizer.construct_search_space(next_target).prune()
@@ -392,7 +393,7 @@ if __name__ == "__main__":
                               kernel_optimizer=kernel.optimize_hyperparameter, n_restarts_optimizer=2,
                               population_size=50, tournament_size=5,
                               crossover_rate=0.85, mutation_rate=0.35,
-                              generation_limit=25, elitism=1,
+                              generation_limit=10, elitism=1,
                               enforce_diversity=False)
 
     start = time.time()
@@ -424,8 +425,9 @@ if __name__ == "__main__":
     pickle_data(optimized_kernel, name='optimized_kernel_2', refine=refine, exp=exp, starting=starting, init_samples=init_sample_size, kernel_choice=kernel_choice)
 
     ##############################################################
-    last_target = result["best_tree"].interpret(repo.to_structure_2_algebra())
-
+    best_tree_unpacked = unpickle_cls_data([result['best_tree']], repo, synthesizer)[0]
+    last_target = best_tree_unpacked.interpret(repo.to_structure_3_algebra())
+    
     print("Last Target: ", last_target)
     synthesizer = SearchSpaceSynthesizer(repo.specification(), {})
 
@@ -445,7 +447,7 @@ if __name__ == "__main__":
                               kernel_optimizer=kernel.optimize_hyperparameter, n_restarts_optimizer=2,
                               population_size=50, tournament_size=5,
                               crossover_rate=0.85, mutation_rate=0.35,
-                              generation_limit=25, elitism=1,
+                              generation_limit=10, elitism=1,
                               enforce_diversity=False)
 
     start = time.time()
