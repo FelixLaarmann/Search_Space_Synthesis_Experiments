@@ -279,15 +279,15 @@ if __name__ == "__main__":
                                     normalize_y=False)
 
     # Load pre generated data for the training
-    data = torch.load('data/ode1_dataset.pth')
-    x = data['x_train']
-    y = data['y_train']
-    x_test = data['x_test']
-    y_test = data['y_test']
+    data = torch.load('../data/ode1_dataset.pth')
+    x_data_loaded = data['x_train']
+    y_data_loaded = data['y_train']
+    x_test_data_loaded = data['x_test']
+    y_test_data_loaded = data['y_test']
 
     def f_obj(t):
         learner = t.interpret(repo.pytorch_function_algebra())
-        return learner(x, y, x_test, y_test)
+        return learner(x_data_loaded, y_data_loaded, x_test_data_loaded, y_test_data_loaded)
 
     #terms = search_space.sample(sample_size, target)
     next = search_space.sample_tree(target)
@@ -320,8 +320,29 @@ if __name__ == "__main__":
     print("X should not have any duplicates!")
     print("If Y has duplicates, either the objective function is not injective or its a rounding error.")
 
-    x_gp_test = np.array(x_gp[train_size:])
-    y_gp_test = np.array(y_gp[train_size:])
+    x_gp_test_robust = np.array(x_gp[train_size:])
+    y_gp_test_robust = np.array(y_gp[train_size:])
+
+    next_test = search_space.sample_tree(target)
+    terms = []
+    while len(terms) < test_size:
+        print(len(terms))
+        is_duplicate = False
+        for tree in terms:
+            k = kernel1._f(next_test, tree)  # kernel1 should be enough
+            if k > 0.8:  # sample more different test set
+                is_duplicate = True
+                break
+        if not is_duplicate:
+            terms.append(next_test)
+        next_test = search_space.sample_tree(target)
+
+    x_gp_test_different= np.array(terms)
+    y_gp_test_different = np.array([f_obj(t) for t in terms])
+
+    last_test = search_space.sample(test_size, target)
+    x_gp_test_redundancy = np.array(last_test)
+    y_gp_test_redundancy = np.array([f_obj(t) for t in last_test])
 
     slice_size = int(train_size // plot_resolution)
     #print(f'slice size: {slice_size}')
@@ -336,14 +357,31 @@ if __name__ == "__main__":
     y_sigmas_gp3 = []
     y_preds_gp_h = []
     y_sigmas_gp_h = []
-    pears_gp1 = []
-    kts_gp1 = []
-    pears_gp2 = []
-    kts_gp2 = []
-    pears_gp3 = []
-    kts_gp3 = []
-    pears_gp_h = []
-    kts_gp_h = []
+
+    pears_gp1_robust = []
+    kts_gp1_robust = []
+    pears_gp1_difference = []
+    kts_gp1_difference = []
+    pears_gp1_redundancy = []
+    kts_gp1_redundancy = []
+    pears_gp2_robust = []
+    kts_gp2_robust = []
+    pears_gp2_difference = []
+    kts_gp2_difference = []
+    pears_gp2_redundancy = []
+    kts_gp2_redundancy = []
+    pears_gp3_robust = []
+    kts_gp3_robust = []
+    pears_gp3_difference = []
+    kts_gp3_difference = []
+    pears_gp3_redundancy = []
+    kts_gp3_redundancy = []
+    pears_gp_h_robust = []
+    kts_gp_h_robust = []
+    pears_gp_h_difference = []
+    kts_gp_h_difference = []
+    pears_gp_h_redundancy = []
+    kts_gp_h_redundancy = []
 
     #print("data generated")
 
@@ -355,39 +393,47 @@ if __name__ == "__main__":
         x_trained = x_trained + list(x_gp_i)
         y_trained = y_trained + list(y_gp_i)
 
-        K1 = kernel1(x_gp_i)
-        D1 = kernel1.diag(x_gp_i)
+        K1 = kernel1(x_trained)
+        D1 = kernel1.diag(x_trained)
 
         plt.figure(figsize=(8, 5))
         plt.imshow(np.diag(D1 ** -0.5).dot(K1).dot(np.diag(D1 ** -0.5)))
-        plt.xticks(np.arange(len(x_gp_i)), range(1, len(x_gp_i) + 1))
-        plt.yticks(np.arange(len(x_gp_i)), range(1, len(x_gp_i) + 1))
+        plt.xticks(np.arange(len(x_trained)), range(1, len(x_trained) + 1))
+        plt.yticks(np.arange(len(x_trained)), range(1, len(x_trained) + 1))
         plt.title("Term similarity under the kernel1")
-        print(f'Doing: {folder}/term_sim_k1_{idx}_{EXPERIMENT_NUMBER}.png')
+        #print(f'Doing: {folder}/term_sim_k1_{idx}_{EXPERIMENT_NUMBER}.png')
         plt.savefig(f'{folder}/term_sim_k1_{idx}_{EXPERIMENT_NUMBER}.png')
         plt.savefig(f'{folder}/term_sim_k1_{idx}_{EXPERIMENT_NUMBER}.pdf')
         plt.close()
         try:
-
             gp1.fit(x_trained, y_trained)
-            y_pred_next, sigma_next = gp1.predict(x_gp_test, return_std=True)
+            y_pred_next, sigma_next = gp1.predict(x_gp_test_robust, return_std=True)
+            y_pred_next_different, sigma_next_different = gp1.predict(x_gp_test_different, return_std=True)
+            y_pred_next_redundancy, sigma_next_redundancy = gp1.predict(x_gp_test_redundancy, return_std=True)
         except Warning as e: 
-            print(x_gp_test.interpret(repo.pretty_term_algebra()))
+            print("Abort when warning during GP fitting/prediction:")
+            print(f"Look at {folder}/term_sim_k1_{idx}_{EXPERIMENT_NUMBER}.png")
             raise 
 
 
         y_preds_gp1.append(y_pred_next)
         y_sigmas_gp1.append(sigma_next)
-        pears_gp1.append(pearsonr(y_gp_test, np.nan_to_num(y_pred_next))[0])
-        kts_gp1.append(kendalltau(y_gp_test, np.nan_to_num(y_pred_next))[0])
+        pears_gp1_robust.append(pearsonr(y_gp_test_robust, np.nan_to_num(y_pred_next))[0])
+        kts_gp1_robust.append(kendalltau(y_gp_test_robust, np.nan_to_num(y_pred_next))[0])
 
-        K2 = kernel2(x_gp_i)
-        D2 = kernel2.diag(x_gp_i)
+        pears_gp1_difference.append(pearsonr(y_gp_test_different, np.nan_to_num(y_pred_next_different))[0])
+        kts_gp1_difference.append(kendalltau(y_gp_test_different, np.nan_to_num(y_pred_next_different))[0])
+
+        pears_gp1_redundancy.append(pearsonr(y_gp_test_redundancy, np.nan_to_num(y_pred_next_redundancy))[0])
+        kts_gp1_redundancy.append(kendalltau(y_gp_test_redundancy, np.nan_to_num(y_pred_next_redundancy))[0])
+
+        K2 = kernel2(x_trained)
+        D2 = kernel2.diag(x_trained)
 
         plt.figure(figsize=(8, 5))
         plt.imshow(np.diag(D2 ** -0.5).dot(K2).dot(np.diag(D2 ** -0.5)))
-        plt.xticks(np.arange(len(x_gp_i)), range(1, len(x_gp_i) + 1))
-        plt.yticks(np.arange(len(x_gp_i)), range(1, len(x_gp_i) + 1))
+        plt.xticks(np.arange(len(x_trained)), range(1, len(x_trained) + 1))
+        plt.yticks(np.arange(len(x_trained)), range(1, len(x_trained) + 1))
         plt.title("Term similarity under the kernel2")
         plt.savefig(f'{folder}/term_sim_k2_{idx}_{EXPERIMENT_NUMBER}.png')
         plt.savefig(f'{folder}/term_sim_k2_{idx}_{EXPERIMENT_NUMBER}.pdf')
@@ -397,23 +443,32 @@ if __name__ == "__main__":
 
             gp2.fit(x_trained, y_trained)
 
-            y_pred_next, sigma_next = gp2.predict(x_gp_test, return_std=True)
-        except Warning as e: 
-            print(x_gp_test.interpret(repo.pretty_term_algebra()))
+            y_pred_next, sigma_next = gp2.predict(x_gp_test_robust, return_std=True)
+            y_pred_next_different, sigma_next_different = gp2.predict(x_gp_test_different, return_std=True)
+            y_pred_next_redundancy, sigma_next_redundancy = gp2.predict(x_gp_test_redundancy, return_std=True)
+        except Warning as e:
+            print("Abort when warning during GP fitting/prediction:")
+            print(f"Look at {folder}/term_sim_k2_{idx}_{EXPERIMENT_NUMBER}.png")
             raise
 
         y_preds_gp2.append(y_pred_next)
         y_sigmas_gp2.append(sigma_next)
-        pears_gp2.append(pearsonr(y_gp_test, np.nan_to_num(y_pred_next))[0])
-        kts_gp2.append(kendalltau(y_gp_test, np.nan_to_num(y_pred_next))[0])
+        pears_gp2_robust.append(pearsonr(y_gp_test_robust, np.nan_to_num(y_pred_next))[0])
+        kts_gp2_robust.append(kendalltau(y_gp_test_robust, np.nan_to_num(y_pred_next))[0])
 
-        K3 = kernel3(x_gp_i)
-        D3 = kernel3.diag(x_gp_i)
+        pears_gp2_difference.append(pearsonr(y_gp_test_different, np.nan_to_num(y_pred_next_different))[0])
+        kts_gp2_difference.append(kendalltau(y_gp_test_different, np.nan_to_num(y_pred_next_different))[0])
+
+        pears_gp2_redundancy.append(pearsonr(y_gp_test_redundancy, np.nan_to_num(y_pred_next_redundancy))[0])
+        kts_gp2_redundancy.append(kendalltau(y_gp_test_redundancy, np.nan_to_num(y_pred_next_redundancy))[0])
+
+        K3 = kernel3(x_trained)
+        D3 = kernel3.diag(x_trained)
 
         plt.figure(figsize=(8, 5))
         plt.imshow(np.diag(D3 ** -0.5).dot(K3).dot(np.diag(D3 ** -0.5)))
-        plt.xticks(np.arange(len(x_gp_i)), range(1, len(x_gp_i) + 1))
-        plt.yticks(np.arange(len(x_gp_i)), range(1, len(x_gp_i) + 1))
+        plt.xticks(np.arange(len(x_trained)), range(1, len(x_trained) + 1))
+        plt.yticks(np.arange(len(x_trained)), range(1, len(x_trained) + 1))
         plt.title("Term similarity under the kernel3")
         plt.savefig(f'{folder}/term_sim_k3_{idx}_{EXPERIMENT_NUMBER}.png')
         plt.savefig(f'{folder}/term_sim_k3_{idx}_{EXPERIMENT_NUMBER}.pdf')
@@ -422,32 +477,42 @@ if __name__ == "__main__":
 
             gp3.fit(x_trained, y_trained)
 
-            y_pred_next, sigma_next = gp3.predict(x_gp_test, return_std=True)
-        except Warning as e: 
-            print(x_gp_test.interpret(repo.pretty_term_algebra()))
+            y_pred_next, sigma_next = gp3.predict(x_gp_test_robust, return_std=True)
+            y_pred_next_different, sigma_next_different = gp3.predict(x_gp_test_different, return_std=True)
+            y_pred_next_redundancy, sigma_next_redundancy = gp3.predict(x_gp_test_redundancy, return_std=True)
+        except Warning as e:
+            print("Abort when warning during GP fitting/prediction:")
+            print(f"Look at {folder}/term_sim_k3_{idx}_{EXPERIMENT_NUMBER}.png")
             raise
 
         y_preds_gp3.append(y_pred_next)
         y_sigmas_gp3.append(sigma_next)
-        pears_gp3.append(pearsonr(y_gp_test, np.nan_to_num(y_pred_next))[0])
-        kts_gp3.append(kendalltau(y_gp_test, np.nan_to_num(y_pred_next))[0])
+        pears_gp3_robust.append(pearsonr(y_gp_test_robust, np.nan_to_num(y_pred_next))[0])
+        kts_gp3_robust.append(kendalltau(y_gp_test_robust, np.nan_to_num(y_pred_next))[0])
+
+        pears_gp3_difference.append(pearsonr(y_gp_test_different, np.nan_to_num(y_pred_next_different))[0])
+        kts_gp3_difference.append(kendalltau(y_gp_test_different, np.nan_to_num(y_pred_next_different))[0])
+
+        pears_gp3_redundancy.append(pearsonr(y_gp_test_redundancy, np.nan_to_num(y_pred_next_redundancy))[0])
+        kts_gp3_redundancy.append(kendalltau(y_gp_test_redundancy, np.nan_to_num(y_pred_next_redundancy))[0])
+
 
         # Hierarchical kernel with initial hyperparameters
-        K_h = hkernel(x_gp_i)
-        D_h = hkernel.diag(x_gp_i)
+        K_h = hkernel(x_trained)
+        D_h = hkernel.diag(x_trained)
 
         plt.figure(figsize=(8, 5))
         plt.imshow(np.diag(D3 ** -0.5).dot(K3).dot(np.diag(D3 ** -0.5)))
-        plt.xticks(np.arange(len(x_gp_i)), range(1, len(x_gp_i) + 1))
-        plt.yticks(np.arange(len(x_gp_i)), range(1, len(x_gp_i) + 1))
+        plt.xticks(np.arange(len(x_trained)), range(1, len(x_trained) + 1))
+        plt.yticks(np.arange(len(x_trained)), range(1, len(x_trained) + 1))
         plt.title("Term similarity under the unfitted hierarchical kernel")
         plt.savefig(f'{folder}/term_sim_hk_{idx}_{EXPERIMENT_NUMBER}.png')
         plt.savefig(f'{folder}/term_sim_hk_{idx}_{EXPERIMENT_NUMBER}.pdf')
         plt.close()
 
         # Hierarchical kernel with fitted hyperparameters from the last iteration
-        K_h_fitted = gp_h.kernel(x_gp_i)
-        D_h_fitted = gp_h.kernel.diag(x_gp_i)
+        K_h_fitted = gp_h.kernel(x_trained)
+        D_h_fitted = gp_h.kernel.diag(x_trained)
 
         hyperparameters_fitted = gp_h.kernel.hyperparameters
         """
@@ -466,85 +531,100 @@ if __name__ == "__main__":
 
         plt.figure(figsize=(8, 5))
         plt.imshow(np.diag(D3 ** -0.5).dot(K3).dot(np.diag(D3 ** -0.5)))
-        plt.xticks(np.arange(len(x_gp_i)), range(1, len(x_gp_i) + 1))
-        plt.yticks(np.arange(len(x_gp_i)), range(1, len(x_gp_i) + 1))
+        plt.xticks(np.arange(len(x_trained)), range(1, len(x_trained) + 1))
+        plt.yticks(np.arange(len(x_trained)), range(1, len(x_trained) + 1))
         plt.title("Term similarity under the fitted hierarchical kernel from the last iteration")
         plt.savefig(f'{folder}/term_sim_hkf_{idx}_{EXPERIMENT_NUMBER}.png')
         plt.savefig(f'{folder}/term_sim_hkf_{idx}_{EXPERIMENT_NUMBER}.pdf')
         plt.close()
 
-        """gp_h.fit(x_trained, y_trained)
+        try:
+            gp_h.fit(x_trained, y_trained)
 
-        y_pred_next, sigma_next = gp_h.predict(x_gp_test, return_std=True)
+            y_pred_next, sigma_next = gp_h.predict(x_gp_test_robust, return_std=True)
+            y_pred_next_different = gp_h.predict(x_gp_test_different, return_std=True)
+            y_pred_next_redundancy = gp_h.predict(x_gp_test_redundancy, return_std=True)
+        except Warning as e:
+            print("Abort when warning during GP fitting/prediction:")
+            print(f"Look at {folder}/term_sim_hk_{idx}_{EXPERIMENT_NUMBER}.png")
+            raise
 
         y_preds_gp_h.append(y_pred_next)
         y_sigmas_gp_h.append(sigma_next)
-        pears_gp_h.append(pearsonr(y_gp_test, np.nan_to_num(y_pred_next))[0])
-        kts_gp_h.append(kendalltau(y_gp_test, np.nan_to_num(y_pred_next))[0])
-        """
-    plt.plot(range(slice_size, train_size + slice_size, slice_size), kts_gp1, linestyle="dotted")
+        pears_gp_h_robust.append(pearsonr(y_gp_test_robust, np.nan_to_num(y_pred_next))[0])
+        kts_gp_h_robust.append(kendalltau(y_gp_test_robust, np.nan_to_num(y_pred_next))[0])
+
+        pears_gp_h_difference.append(pearsonr(y_gp_test_different, np.nan_to_num(y_pred_next_different))[0])
+        kts_gp_h_difference.append(kendalltau(y_gp_test_different, np.nan_to_num(y_pred_next_different))[0])
+
+        pears_gp_h_redundancy.append(pearsonr(y_gp_test_redundancy, np.nan_to_num(y_pred_next_redundancy))[0])
+        kts_gp_h_redundancy.append(kendalltau(y_gp_test_redundancy, np.nan_to_num(y_pred_next_redundancy))[0])
+
+    plt.plot(range(slice_size, train_size + slice_size, slice_size), kts_gp1_robust, linestyle="dotted")
     plt.xlabel("# of samples")
     plt.ylabel("tau")
-    _ = plt.title("Kendall Tau correlation for GP with kernel1")
+    _ = plt.title("Kendall Tau correlation for GP with kernel1 and robust test data")
     plt.savefig(f'{folder}/ktau_k1_{EXPERIMENT_NUMBER}.png')
     plt.savefig(f'{folder}/ktau_k1_{EXPERIMENT_NUMBER}.pdf')
     plt.close()
 
-    plt.plot(range(slice_size, train_size + slice_size, slice_size), pears_gp1, linestyle="dotted")
+    plt.plot(range(slice_size, train_size + slice_size, slice_size), pears_gp1_robust, linestyle="dotted")
     plt.xlabel("# of samples")
     plt.ylabel("p")
-    _ = plt.title("Pearson correlation for GP with kernel1")
+    _ = plt.title("Pearson correlation for GP with kernel1 and robust test data")
     plt.savefig(f'{folder}/pc_k1_{EXPERIMENT_NUMBER}.png')
     plt.savefig(f'{folder}/pc_k1_{EXPERIMENT_NUMBER}.pdf')
     plt.close()
 
-    plt.plot(range(slice_size, train_size + slice_size, slice_size), kts_gp2, linestyle="dotted")
+    plt.plot(range(slice_size, train_size + slice_size, slice_size), kts_gp2_robust, linestyle="dotted")
     plt.xlabel("# of samples")
     plt.ylabel("tau")
-    _ = plt.title("Kendall Tau correlation for GP with kernel2")
+    _ = plt.title("Kendall Tau correlation for GP with kernel2 and robust test data")
     plt.savefig(f'{folder}/ktau_k2_{EXPERIMENT_NUMBER}.png')
     plt.savefig(f'{folder}/ktau_k2_{EXPERIMENT_NUMBER}.pdf')
     plt.close()
 
-    plt.plot(range(slice_size, train_size + slice_size, slice_size), pears_gp2, linestyle="dotted")
+    plt.plot(range(slice_size, train_size + slice_size, slice_size), pears_gp2_robust, linestyle="dotted")
     plt.xlabel("# of samples")
     plt.ylabel("p")
-    _ = plt.title("Pearson correlation for GP with kernel2")
+    _ = plt.title("Pearson correlation for GP with kernel2 and robust test data")
     plt.savefig(f'{folder}/pc_k2_{EXPERIMENT_NUMBER}.png')
     plt.savefig(f'{folder}/pc_k2_{EXPERIMENT_NUMBER}.pdf')
     plt.close()
 
-    plt.plot(range(slice_size, train_size + slice_size, slice_size), kts_gp3, linestyle="dotted")
+    plt.plot(range(slice_size, train_size + slice_size, slice_size), kts_gp3_robust, linestyle="dotted")
     plt.xlabel("# of samples")
     plt.ylabel("tau")
-    _ = plt.title("Kendall Tau correlation for GP with kernel3")
+    _ = plt.title("Kendall Tau correlation for GP with kernel3 and robust test data")
     plt.savefig(f'{folder}/ktau_k3_{EXPERIMENT_NUMBER}.png')
     plt.savefig(f'{folder}/ktau_k3_{EXPERIMENT_NUMBER}.pdf')
     plt.close()
 
-    plt.plot(range(slice_size, train_size + slice_size, slice_size), pears_gp3, linestyle="dotted")
+    plt.plot(range(slice_size, train_size + slice_size, slice_size), pears_gp3_robust, linestyle="dotted")
     plt.xlabel("# of samples")
     plt.ylabel("p")
-    _ = plt.title("Pearson correlation for GP with kernel3")
+    _ = plt.title("Pearson correlation for GP with kernel3 and robust test data")
     plt.savefig(f'{folder}/pc_k3_{EXPERIMENT_NUMBER}.png')
     plt.savefig(f'{folder}/pc_k3_{EXPERIMENT_NUMBER}.pdf')
     plt.close()
 
-    """plt.plot(range(slice_size, train_size + slice_size, slice_size), kts_gp_h, linestyle="dotted")
+    plt.plot(range(slice_size, train_size + slice_size, slice_size), kts_gp_h_robust, linestyle="dotted")
     plt.xlabel("# of samples")
     plt.ylabel("tau")
-    _ = plt.title("Kendall Tau correlation for GP with hierarchical kernel (with HPO)")
+    _ = plt.title("Kendall Tau correlation for GP with hierarchical kernel (with HPO) and robust test data")
     plt.savefig(f'{folder}/ktau_hk_{EXPERIMENT_NUMBER}.png')
     plt.savefig(f'{folder}/ktau_hk_{EXPERIMENT_NUMBER}.pdf')
     plt.close()
 
-    plt.plot(range(slice_size, train_size + slice_size, slice_size), pears_gp_h, linestyle="dotted")
+    plt.plot(range(slice_size, train_size + slice_size, slice_size), pears_gp_h_robust, linestyle="dotted")
     plt.xlabel("# of samples")
     plt.ylabel("p")
-    _ = plt.title("Pearson correlation for GP with hierarchical kernel (with HPO)")
+    _ = plt.title("Pearson correlation for GP with hierarchical kernel (with HPO) and robust test data")
     plt.savefig(f'{folder}/pc_hk_{EXPERIMENT_NUMBER}.png')
     plt.savefig(f'{folder}/pc_hk_{EXPERIMENT_NUMBER}.pdf')
-    plt.close()"""
+    plt.close()
+
+
 
     # Save data
     regression_data = {
@@ -558,12 +638,12 @@ if __name__ == "__main__":
         'y_sigmas_gp3' : y_sigmas_gp3,
         # 'y_preds_gp_h': y_preds_gp_h,
         # 'y_sigmas_gp_h': y_sigmas_gp_h,
-        'pears_gp1' : pears_gp1,
-        'kts_gp1' : kts_gp1,
-        'pears_gp2' : pears_gp2,
-        'kts_gp2' : kts_gp2,
-        'pears_gp3' : pears_gp3,
-        'kts_gp3' : kts_gp3,
+        'pears_gp1' : pears_gp1_robust,
+        'kts_gp1' : kts_gp1_robust,
+        'pears_gp2' : pears_gp2_robust,
+        'kts_gp2' : kts_gp2_robust,
+        'pears_gp3' : pears_gp3_robust,
+        'kts_gp3' : kts_gp3_robust,
         # 'pears_gp_h': pears_gp_h,
         # 'kts_gp_h': kts_gp_h
     }
