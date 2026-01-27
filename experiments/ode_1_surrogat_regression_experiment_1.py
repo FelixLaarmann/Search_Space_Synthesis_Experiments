@@ -624,6 +624,134 @@ if __name__ == "__main__":
     plt.savefig(f'{folder}/pc_hk_{EXPERIMENT_NUMBER}.pdf')
     plt.close()
 
+    plt.plot(range(slice_size, train_size + slice_size, slice_size), kts_gp1_difference, linestyle="dotted")
+    plt.xlabel("# of samples")
+    plt.ylabel("tau")
+    _ = plt.title("Kendall Tau correlation for GP with kernel1 and test data with high variance")
+    plt.savefig(f'{folder}/ktau_k1_{EXPERIMENT_NUMBER}.png')
+    plt.savefig(f'{folder}/ktau_k1_{EXPERIMENT_NUMBER}.pdf')
+    plt.close()
+
+    plt.plot(range(slice_size, train_size + slice_size, slice_size), pears_gp1_difference, linestyle="dotted")
+    plt.xlabel("# of samples")
+    plt.ylabel("p")
+    _ = plt.title("Pearson correlation for GP with kernel1 and test data with high variance")
+    plt.savefig(f'{folder}/pc_k1_{EXPERIMENT_NUMBER}.png')
+    plt.savefig(f'{folder}/pc_k1_{EXPERIMENT_NUMBER}.pdf')
+    plt.close()
+
+    plt.plot(range(slice_size, train_size + slice_size, slice_size), kts_gp2_difference, linestyle="dotted")
+    plt.xlabel("# of samples")
+    plt.ylabel("tau")
+    _ = plt.title("Kendall Tau correlation for GP with kernel2 and test data with high variance")
+    plt.savefig(f'{folder}/ktau_k2_{EXPERIMENT_NUMBER}.png')
+    plt.savefig(f'{folder}/ktau_k2_{EXPERIMENT_NUMBER}.pdf')
+    plt.close()
+
+    plt.plot(range(slice_size, train_size + slice_size, slice_size), pears_gp2_difference, linestyle="dotted")
+    plt.xlabel("# of samples")
+    plt.ylabel("p")
+    _ = plt.title("Pearson correlation for GP with kernel2 and test data with high variance")
+    plt.savefig(f'{folder}/pc_k2_{EXPERIMENT_NUMBER}.png')
+    plt.savefig(f'{folder}/pc_k2_{EXPERIMENT_NUMBER}.pdf')
+    plt.close()
+
+    plt.plot(range(slice_size, train_size + slice_size, slice_size), kts_gp3_difference, linestyle="dotted")
+    plt.xlabel("# of samples")
+    plt.ylabel("tau")
+    _ = plt.title("Kendall Tau correlation for GP with kernel3 and test data with high variance")
+    plt.savefig(f'{folder}/ktau_k3_{EXPERIMENT_NUMBER}.png')
+    plt.savefig(f'{folder}/ktau_k3_{EXPERIMENT_NUMBER}.pdf')
+    plt.close()
+
+    plt.plot(range(slice_size, train_size + slice_size, slice_size), pears_gp3_difference, linestyle="dotted")
+    plt.xlabel("# of samples")
+    plt.ylabel("p")
+    _ = plt.title("Pearson correlation for GP with kernel3 and test data with high variance")
+    plt.savefig(f'{folder}/pc_k3_{EXPERIMENT_NUMBER}.png')
+    plt.savefig(f'{folder}/pc_k3_{EXPERIMENT_NUMBER}.pdf')
+    plt.close()
+
+    plt.plot(range(slice_size, train_size + slice_size, slice_size), kts_gp_h_difference, linestyle="dotted")
+    plt.xlabel("# of samples")
+    plt.ylabel("tau")
+    _ = plt.title("Kendall Tau correlation for GP with hierarchical kernel (with HPO) and test data with high variance")
+    plt.savefig(f'{folder}/ktau_hk_{EXPERIMENT_NUMBER}.png')
+    plt.savefig(f'{folder}/ktau_hk_{EXPERIMENT_NUMBER}.pdf')
+    plt.close()
+
+    plt.plot(range(slice_size, train_size + slice_size, slice_size), pears_gp_h_difference, linestyle="dotted")
+    plt.xlabel("# of samples")
+    plt.ylabel("p")
+    _ = plt.title("Pearson correlation for GP with hierarchical kernel (with HPO) and test data with high variance")
+    plt.savefig(f'{folder}/pc_hk_{EXPERIMENT_NUMBER}.png')
+    plt.savefig(f'{folder}/pc_hk_{EXPERIMENT_NUMBER}.pdf')
+    plt.close()
+
+    plt.plot(range(slice_size, train_size + slice_size, slice_size), kts_gp1_redundancy, linestyle="dotted")
+    plt.xlabel("# of samples")
+    plt.ylabel("tau")
+    _ = plt.title("Kendall Tau correlation for GP with kernel1 and possibly redundant test data")
+    plt.savefig(f'{folder}/ktau_k1_{EXPERIMENT_NUMBER}.png')
+    plt.savefig(f'{folder}/ktau_k1_{EXPERIMENT_NUMBER}.pdf')
+    plt.close()
+
+    plt.plot(range(slice_size, train_size + slice_size, slice_size), pears_gp1_redundancy, linestyle="dotted")
+    plt.xlabel("# of samples")
+    plt.ylabel("p")
+    _ = plt.title("Pearson correlation for GP with kernel1 and possibly redundant test data")
+    plt.savefig(f'{folder}/pc_k1_{EXPERIMENT_NUMBER}.png')
+    plt.savefig(f'{folder}/pc_k1_{EXPERIMENT_NUMBER}.pdf')
+    plt.close()
+
+    plt.plot(range(slice_size, train_size + slice_size, slice_size), kts_gp2_redundancy, linestyle="dotted")
+    plt.xlabel("# of samples")
+    plt.ylabel("tau")
+    _ = plt.title("Kendall Tau correlation for GP with kernel2 and possibly redundant test data")
+    plt.savefig(f'{folder}/ktau_k2_{EXPERIMENT_NUMBER}.png')
+    plt.savefig(f'{folder}/ktau_k2_{EXPERIMENT_NUMBER}.pdf')
+    plt.close()
+
+    plt.plot(range(slice_size, train_size + slice_size, slice_size), pears_gp2_redundancy, linestyle="dotted")
+    plt.xlabel("# of samples")
+    plt.ylabel("p")
+    _ = plt.title("Pearson correlation for GP with kernel2 and possibly redundant test data")
+    plt.savefig(f'{folder}/pc_k2_{EXPERIMENT_NUMBER}.png')
+    plt.savefig(f'{folder}/pc_k2_{EXPERIMENT_NUMBER}.pdf')
+    plt.close()
+
+    plt.plot(range(slice_size, train_size + slice_size, slice_size), kts_gp3_redundancy, linestyle="dotted")
+    plt.xlabel("# of samples")
+    plt.ylabel("tau")
+    _ = plt.title("Kendall Tau correlation for GP with kernel3 and possibly redundant test data")
+    plt.savefig(f'{folder}/ktau_k3_{EXPERIMENT_NUMBER}.png')
+    plt.savefig(f'{folder}/ktau_k3_{EXPERIMENT_NUMBER}.pdf')
+    plt.close()
+
+    plt.plot(range(slice_size, train_size + slice_size, slice_size), pears_gp3_redundancy, linestyle="dotted")
+    plt.xlabel("# of samples")
+    plt.ylabel("p")
+    _ = plt.title("Pearson correlation for GP with kernel3 and possibly redundant test data")
+    plt.savefig(f'{folder}/pc_k3_{EXPERIMENT_NUMBER}.png')
+    plt.savefig(f'{folder}/pc_k3_{EXPERIMENT_NUMBER}.pdf')
+    plt.close()
+
+    plt.plot(range(slice_size, train_size + slice_size, slice_size), kts_gp_h_redundancy, linestyle="dotted")
+    plt.xlabel("# of samples")
+    plt.ylabel("tau")
+    _ = plt.title("Kendall Tau correlation for GP with hierarchical kernel (with HPO) and possibly redundant test data")
+    plt.savefig(f'{folder}/ktau_hk_{EXPERIMENT_NUMBER}.png')
+    plt.savefig(f'{folder}/ktau_hk_{EXPERIMENT_NUMBER}.pdf')
+    plt.close()
+
+    plt.plot(range(slice_size, train_size + slice_size, slice_size), pears_gp_h_redundancy, linestyle="dotted")
+    plt.xlabel("# of samples")
+    plt.ylabel("p")
+    _ = plt.title("Pearson correlation for GP with hierarchical kernel (with HPO) and possibly redundant test data")
+    plt.savefig(f'{folder}/pc_hk_{EXPERIMENT_NUMBER}.png')
+    plt.savefig(f'{folder}/pc_hk_{EXPERIMENT_NUMBER}.pdf')
+    plt.close()
+
 
 
     # Save data
@@ -636,16 +764,16 @@ if __name__ == "__main__":
         'y_sigmas_gp2' : y_sigmas_gp2,
         'y_preds_gp3' : y_preds_gp3,
         'y_sigmas_gp3' : y_sigmas_gp3,
-        # 'y_preds_gp_h': y_preds_gp_h,
-        # 'y_sigmas_gp_h': y_sigmas_gp_h,
+        'y_preds_gp_h': y_preds_gp_h,
+        'y_sigmas_gp_h': y_sigmas_gp_h,
         'pears_gp1' : pears_gp1_robust,
         'kts_gp1' : kts_gp1_robust,
         'pears_gp2' : pears_gp2_robust,
         'kts_gp2' : kts_gp2_robust,
         'pears_gp3' : pears_gp3_robust,
         'kts_gp3' : kts_gp3_robust,
-        # 'pears_gp_h': pears_gp_h,
-        # 'kts_gp_h': kts_gp_h
+        'pears_gp_h': pears_gp_h,
+        'kts_gp_h': kts_gp_h
     }
 
     with open(f'{folder}/regression_data_{EXPERIMENT_NUMBER}.pkl', 'wb') as f:
