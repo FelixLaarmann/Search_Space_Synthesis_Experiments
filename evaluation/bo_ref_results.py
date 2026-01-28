@@ -10,6 +10,7 @@ from synthesis.utils import generate_data
 
 import re
 import time 
+import os 
 
 from grakel.utils import graph_from_networkx
 
@@ -76,8 +77,59 @@ target_solution = Constructor("Learner", Constructor("DAG",
 synthesizer = SearchSpaceSynthesizer(repo.specification(), {})
 search_space = synthesizer.construct_search_space(target_solution).prune()
 
-with open("results/20260126_131224/result_WL1.pkl", 'rb') as f: 
-    data = dill.load(f)
-print(data)
+base = 'results/ode_1_bo'
+ref = ['no_ref', 'ref']
+result_files = set()
+init_sample = [10, 50]
+results = dict()
+
+for r, i in zip(ref, init_sample): 
+    if r not in results:
+        results[r] = {}
+    if i not in results[r]:
+        results[r][i] = {}
+    folder_name = f'{base}_{r}_{i}'
+    folders = os.listdir(folder_name)
+    for f_ in folders: 
+        data_containing_folder = f'{folder_name}/{f_}'
+        if os.path.isfile(data_containing_folder):
+            continue
+        result_data = os.listdir(data_containing_folder)
+        for rd in result_data: 
+            if 'result' in rd: 
+                result_data = f'{data_containing_folder}/{rd}'
+                print(f'Working on {data_containing_folder}/{rd}')
+                with open(f'{data_containing_folder}/{rd}', 'rb') as f:
+                    try:
+                        data = dill.load(f)
+                        data["best_tree"]  = unpickle_cls_data([data['best_tree']], repo, synthesizer)[0]
+                        fn = os.path.splitext(rd)
+                        if rd in results[r][i]:
+                            results[r][i][rd]['tree'].append(data['best_tree'].interpret(repo.pretty_term_algebra()))
+                            results[r][i][rd]['y'].append(min(data["y"]))
+                        else: 
+                            results[r][i][rd] = {}
+                            results[r][i][rd]['tree'] = [data['best_tree'].interpret(repo.pretty_term_algebra())]
+                            results[r][i][rd]['y'] = [min(data["y"])]
+                        result_files.add(rd)
+                    except (AttributeError, ValueError):
+                        print(f'{data_containing_folder}/{rd} is faulty')
+print(list(result_files))
 
 
+
+
+
+
+
+
+
+
+
+
+# with open("results/ode_1_bo_no_ref_10/20260127_142345/result_WL1.pkl", 'rb') as f: 
+#     data = dill.load(f)
+# print(data.keys())
+# data["best_tree"]  = unpickle_cls_data([data['best_tree']], repo, synthesizer)[0]
+# print(data['best_tree'].interpret(repo.pretty_term_algebra()))
+# print(f'y: {min(data["y"])}')

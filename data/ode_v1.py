@@ -29,7 +29,7 @@ class SimpleODE(nn.Module):
         
 
 # ===================
-# Data Generation 
+# Data Generation 0.5
 # ===================
 
 generation_model = SimpleODE()
